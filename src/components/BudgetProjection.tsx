@@ -11,7 +11,7 @@ import {
   ResponsiveContainer, Cell, PieChart, Pie, Legend,
 } from "recharts";
 import { useTheme } from "next-themes";
-import { cn } from "@/lib/utils";
+import { cn, campaignColor } from "@/lib/utils";
 import type { CampaignAnalysis } from "@/types/meta";
 import type { DatePreset } from "@/lib/metaApi";
 
@@ -43,10 +43,6 @@ const PRESET_LABELS: Record<DatePreset, string> = {
   last_month: "Mes anterior",
 };
 
-const COLORS = [
-  "#60a5fa","#34d399","#f97316","#a78bfa",
-  "#f87171","#facc15","#2dd4bf","#fb7185","#818cf8","#4ade80",
-];
 
 function getDaysInMonth() {
   const now = new Date();
@@ -266,7 +262,7 @@ export function BudgetProjection({ campaigns, datePreset = "last_30d" }: Props) 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {sorted.slice(0, 4).map((c, i) => (
                 <div key={c.id} className="rounded-xl border p-3 flex flex-col gap-1"
-                  style={{ borderColor: "var(--border)", background: "var(--accent)", borderLeft: `3px solid ${COLORS[i]}` }}>
+                  style={{ borderColor: "var(--border)", background: "var(--accent)", borderLeft: `3px solid ${campaignColor(c.name, i)}` }}>
                   <p className="text-xs truncate" style={{ color: "var(--muted-foreground)" }} title={c.name}>{c.name}</p>
                   <p className="font-bold text-sm">{fmt(c.spend)}</p>
                   <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
@@ -289,7 +285,7 @@ export function BudgetProjection({ campaigns, datePreset = "last_30d" }: Props) 
                     <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 10, fill: textColor }} axisLine={false} tickLine={false} />
                     <Tooltip content={<BarTip />} />
                     <Bar dataKey="spend" radius={[0, 4, 4, 0]}>
-                      {barData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                      {barData.map((d, i) => <Cell key={i} fill={campaignColor(d.fullName, i)} />)}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
@@ -304,7 +300,7 @@ export function BudgetProjection({ campaigns, datePreset = "last_30d" }: Props) 
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie data={pieData} cx="50%" cy="44%" innerRadius={65} outerRadius={100} paddingAngle={2} dataKey="value">
-                      {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                      {pieData.map((d, i) => <Cell key={i} fill={campaignColor(d.fullName, i)} />)}
                     </Pie>
                     <Tooltip content={<PieTip />} />
                     <Legend iconType="circle" iconSize={8}

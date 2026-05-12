@@ -41,3 +41,24 @@ export function formatPercent(n: number): string {
 export function formatRoas(n: number): string {
   return `${n.toFixed(2)}x`;
 }
+
+// ── Colores por región XBREIN ──────────────────────────────────────
+const REGION_COLORS: { keywords: string[]; color: string }[] = [
+  { keywords: ["chile", "cl ","_cl_", "-cl-", " cl-", "-cl ", "(cl)"], color: "#3b82f6" }, // azul
+  { keywords: ["mx", "mexico", "méxico"],                               color: "#22c55e" }, // verde
+  { keywords: ["latam", "lat am", "latinoamerica", "latinoamérica"],    color: "#ef4444" }, // rojo
+  { keywords: ["xbrein", "tbrein", "x brein", "t brein"],              color: "#f97316" }, // naranja
+];
+
+const FALLBACK_COLORS = [
+  "#60a5fa","#34d399","#f97316","#a78bfa",
+  "#f87171","#facc15","#2dd4bf","#fb7185","#818cf8","#4ade80",
+];
+
+export function campaignColor(name: string, fallbackIndex = 0): string {
+  const lower = name.toLowerCase();
+  for (const { keywords, color } of REGION_COLORS) {
+    if (keywords.some((k) => lower.includes(k))) return color;
+  }
+  return FALLBACK_COLORS[fallbackIndex % FALLBACK_COLORS.length];
+}

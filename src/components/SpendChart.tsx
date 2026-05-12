@@ -7,16 +7,11 @@ import {
 } from "recharts";
 import { useTheme } from "next-themes";
 import { DollarSign } from "lucide-react";
+import { campaignColor } from "@/lib/utils";
 
 interface Props {
   data: CampaignAnalysis[];
 }
-
-const COLORS = [
-  "#60a5fa", "#34d399", "#f97316", "#a78bfa",
-  "#f87171", "#facc15", "#2dd4bf", "#fb7185",
-  "#818cf8", "#4ade80",
-];
 
 function fmt(n: number): string {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
@@ -72,10 +67,11 @@ export function SpendChart({ data }: Props) {
     .slice(0, 12);
 
   const barData = sorted.map((c) => ({
-    name: c.name.length > 22 ? c.name.slice(0, 20) + "…" : c.name,
+    name:     c.name.length > 22 ? c.name.slice(0, 20) + "…" : c.name,
     fullName: c.name,
-    spend: c.spend,
-    pct: totalSpend > 0 ? (c.spend / totalSpend) * 100 : 0,
+    spend:    c.spend,
+    pct:      totalSpend > 0 ? (c.spend / totalSpend) * 100 : 0,
+    color:    campaignColor(c.name, sorted.indexOf(c)),
   }));
 
   // Para el pie, agrupar las campañas más pequeñas en "Otras"
@@ -85,14 +81,15 @@ export function SpendChart({ data }: Props) {
   const restSpend = rest.reduce((s, c) => s + c.spend, 0);
 
   const pieData = [
-    ...topCampaigns.map((c) => ({
-      name: c.name.length > 18 ? c.name.slice(0, 16) + "…" : c.name,
+    ...topCampaigns.map((c, i) => ({
+      name:     c.name.length > 18 ? c.name.slice(0, 16) + "…" : c.name,
       fullName: c.name,
-      value: c.spend,
-      pct: totalSpend > 0 ? (c.spend / totalSpend) * 100 : 0,
+      value:    c.spend,
+      pct:      totalSpend > 0 ? (c.spend / totalSpend) * 100 : 0,
+      color:    campaignColor(c.name, i),
     })),
     ...(restSpend > 0
-      ? [{ name: "Otras", fullName: "Otras campañas", value: restSpend, pct: totalSpend > 0 ? (restSpend / totalSpend) * 100 : 0 }]
+      ? [{ name: "Otras", fullName: "Otras campañas", value: restSpend, pct: totalSpend > 0 ? (restSpend / totalSpend) * 100 : 0, color: "#94a3b8" }]
       : []),
   ];
 
@@ -105,7 +102,7 @@ export function SpendChart({ data }: Props) {
           <div
             key={c.id}
             className="rounded-xl border p-3 flex flex-col gap-1"
-            style={{ borderColor: "var(--border)", background: "var(--card)", borderLeft: `3px solid ${COLORS[i]}` }}
+            style={{ borderColor: "var(--border)", background: "var(--card)", borderLeft: `3px solid ${campaignColor(c.name, i)}` }}
           >
             <p className="text-xs truncate" style={{ color: "var(--muted-foreground)" }} title={c.name}>{c.name}</p>
             <p className="font-bold text-sm">{fmt(c.spend)}</p>
@@ -152,8 +149,8 @@ export function SpendChart({ data }: Props) {
               />
               <Tooltip content={<BarTooltip />} />
               <Bar dataKey="spend" radius={[0, 4, 4, 0]}>
-                {barData.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                {barData.map((d, i) => (
+                  <Cell key={i} fill={d.color} />
                 ))}
               </Bar>
             </BarChart>
@@ -181,8 +178,8 @@ export function SpendChart({ data }: Props) {
                 paddingAngle={2}
                 dataKey="value"
               >
-                {pieData.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                {pieData.map((d, i) => (
+                  <Cell key={i} fill={d.color} />
                 ))}
               </Pie>
               <Tooltip content={<PieTooltip />} />
