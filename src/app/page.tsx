@@ -412,7 +412,6 @@ export default function Dashboard() {
                   )}
                   {analysisTab === "charts" && (
                     <div className="flex flex-col gap-4">
-                      <SpendChart data={analyzed} />
                       <PerformanceChart data={analyzed} />
                       <CreativeFatigueChart data={analyzed} maxFrequency={targets.maxFrequency} targetCtr={targets.ctr} />
                       <PlacementBreakdown data={analyzed} />
