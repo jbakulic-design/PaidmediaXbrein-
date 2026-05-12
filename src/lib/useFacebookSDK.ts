@@ -54,14 +54,30 @@ export function useFacebookSDK() {
     setStatus("idle");
   }, []);
 
+  // Intercambia token corto por uno de larga duración (60 días)
+  const exchangeForLongLived = async (shortToken: string): Promise<string> => {
+    try {
+      const res  = await fetch("/api/refresh-token", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ token: shortToken }),
+      });
+      const data = await res.json();
+      return data.access_token ?? shortToken;
+    } catch {
+      return shortToken; // si falla, usar el corto igual
+    }
+  };
+
   const login = () => {
     setStatus("loading");
     loadSdk(() => {
       window.FB.login(
-        (res) => {
+        async (res) => {
           if (res.authResponse?.accessToken) {
-            localStorage.setItem(TOKEN_KEY, res.authResponse.accessToken);
-            setToken(res.authResponse.accessToken);
+            const longToken = await exchangeForLongLived(res.authResponse.accessToken);
+            localStorage.setItem(TOKEN_KEY, longToken);
+            setToken(longToken);
             setStatus("connected");
           } else {
             setStatus("idle");
