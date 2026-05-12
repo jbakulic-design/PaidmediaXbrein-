@@ -1,104 +1,54 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import type { MetaCampaign } from "@/types/meta";
-import {
-  fetchAdAccounts,
-  fetchCampaignInsights,
-  DATE_PRESET_LABELS,
-  type MetaAdAccount,
-  type DatePreset,
-} from "@/lib/metaApi";
-import { useFacebookSDK, saveSelectedAccount, loadSelectedAccount } from "@/lib/useFacebookSDK";
-import { Loader2, Zap, ChevronDown, ChevronUp, LogOut, RefreshCw, Key, Search } from "lucide-react";
+import { useState, useEffect } from "react";
+import type { MetaAdAccount } from "@/lib/metaApi";
+import { fetchAdAccounts } from "@/lib/metaApi";
+import { useFacebookSDK } from "@/lib/useFacebookSDK";
+import { Loader2, Zap, ChevronDown, ChevronUp, LogOut, Key, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Props {
-  onData: (campaigns: MetaCampaign[]) => void;
-  onConnect?: (token: string, accountId: string, accountName: string, accounts: MetaAdAccount[]) => void;
-  onSettingsChange?: (datePreset: DatePreset, level: "campaign" | "adset" | "ad") => void;
-  externalDatePreset?: DatePreset;
-  externalLevel?: "campaign" | "adset" | "ad";
+  /** Llamado cuando las cuentas cargan — pasa el token y la lista de cuentas al padre */
+  onReady?: (token: string, accounts: MetaAdAccount[]) => void;
+  /** Llamado cuando el usuario hace logout */
+  onDisconnect?: () => void;
   defaultOpen?: boolean;
   standalone?: boolean;
 }
 
-export function MetaApiConnect({ onData, onConnect, onSettingsChange, externalDatePreset, externalLevel, defaultOpen = false, standalone = false }: Props) {
+export function MetaApiConnect({ onReady, onDisconnect, defaultOpen = false, standalone = false }: Props) {
   const [open, setOpen] = useState(standalone || defaultOpen);
   const { status: fbStatus, token, login, loginWithToken, logout } = useFacebookSDK();
-
-  const [accounts, setAccounts] = useState<MetaAdAccount[]>([]);
-  // Arranca vacío siempre; se restaura desde localStorage solo DESPUÉS de cargar las cuentas
-  const [selectedAccount, setSelectedAccount] = useState("");
-  const [datePreset, setDatePreset] = useState<DatePreset>(externalDatePreset ?? "last_30d");
-  const [level, setLevel] = useState<"campaign" | "adset" | "ad">(externalLevel ?? "campaign");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [retryCount, setRetryCount] = useState(0);
   const [showTokenInput, setShowTokenInput] = useState(false);
   const [tokenDraft, setTokenDraft] = useState("");
-  const [accountSearch, setAccountSearch] = useState("");
-
-  const onDataRef = useRef(onData);
-  onDataRef.current = onData;
-  // Solo true después de que el usuario hizo clic en "Cargar campañas" al menos una vez
-  const hasLoadedOnce = useRef(false);
-
-  const retry = useCallback(() => setRetryCount((n) => n + 1), []);
-
-  // Sincroniza props externas (sidebar cambia período/nivel)
-  useEffect(() => { if (externalDatePreset) setDatePreset(externalDatePreset); }, [externalDatePreset]);
-  useEffect(() => { if (externalLevel) setLevel(externalLevel); }, [externalLevel]);
-
-  // Carga cuentas al conectarse
-  useEffect(() => {
-    if (!token) return;
-    fetchAdAccounts(token)
-      .then((accs) => {
-        setAccounts(accs);
-        // Restaurar cuenta guardada si existe, sino dejar vacío para que el usuario elija
-        const saved = loadSelectedAccount();
-        const exists = accs.find((a) => a.id === saved);
-        setSelectedAccount(exists ? saved : "");
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : "Error al cargar cuentas"));
-  }, [token]);
-
-  // Persistir cuenta seleccionada al cambiarla
-  const handleAccountChange = (id: string) => {
-    setSelectedAccount(id);
-    saveSelectedAccount(id);
-  };
-
-  // Carga manual — solo se ejecuta al presionar "Cargar campañas"
-  const loadCampaigns = () => {
-    if (!token || !selectedAccount) return;
-    hasLoadedOnce.current = true;
-    setLoading(true);
-    setError("");
-    fetchCampaignInsights(token, selectedAccount, datePreset, level)
-      .then((campaigns) => {
-        onDataRef.current(campaigns);
-        const accountName = accounts.find((a) => a.id === selectedAccount)?.name ?? "";
-        onConnect?.(token, selectedAccount, accountName, accounts);
-        if (!standalone) setOpen(false);
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : "Error al obtener datos"))
-      .finally(() => setLoading(false));
-  };
-
-  // Re-carga solo si el usuario YA cargó manualmente al menos una vez (retryCount > 0)
-  useEffect(() => {
-    if (!token || !selectedAccount || retryCount === 0 || !hasLoadedOnce.current) return;
-    loadCampaigns();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [retryCount]);
+  const [loadingAccounts, setLoadingAccounts] = useState(false);
+  const [error, setError] = useState("");
 
   const isConnected = fbStatus === "connected" && !!token;
 
+  // Cuando hay token, carga las cuentas y notifica al padre
+  useEffect(() => {
+    if (!token) return;
+    setLoadingAccounts(true);
+    setError("");
+    fetchAdAccounts(token)
+      .then((accounts) => onReady?.(token, accounts))
+      .catch((e) => setError(e instanceof Error ? e.message : "Error al cargar cuentas"))
+      .finally(() => setLoadingAccounts(false));
+  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleLogout = () => {
+    logout();
+    onDisconnect?.();
+  };
+
   const content = (
-    <div className={cn("flex flex-col gap-3", standalone ? "p-4" : "px-4 pb-4 border-t")} style={standalone ? undefined : { borderColor: "var(--border)" }}>
+    <div
+      className={cn("flex flex-col gap-3", standalone ? "p-4" : "px-4 pb-4 border-t")}
+      style={standalone ? undefined : { borderColor: "var(--border)" }}
+    >
       {!isConnected ? (
+        /* ── Estado: no conectado ─────────────────────────────── */
         <div className="flex flex-col items-center gap-3 py-4">
           <p className="text-xs text-center" style={{ color: "var(--muted-foreground)" }}>
             Iniciá sesión con tu cuenta de Meta para cargar las campañas directamente.
@@ -171,114 +121,53 @@ export function MetaApiConnect({ onData, onConnect, onSettingsChange, externalDa
           )}
         </div>
       ) : (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium" style={{ color: "var(--muted-foreground)" }}>Cuenta publicitaria</label>
-              {/* Buscador */}
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: "var(--muted-foreground)" }} />
-                <input
-                  type="text"
-                  placeholder="Buscar cuenta…"
-                  value={accountSearch}
-                  onChange={(e) => setAccountSearch(e.target.value)}
-                  className="w-full rounded-lg border pl-7 pr-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/40"
-                  style={{ background: "var(--accent)", borderColor: "var(--border)", color: "var(--foreground)" }}
-                />
+        /* ── Estado: conectado ────────────────────────────────── */
+        <div className="flex flex-col items-center gap-3 py-4">
+          {loadingAccounts ? (
+            <div className="flex items-center gap-2 text-sm" style={{ color: "var(--muted-foreground)" }}>
+              <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
+              Cargando cuentas…
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 text-sm font-semibold text-emerald-400">
+                <CheckCircle2 className="w-4 h-4" />
+                Conectado a Meta
               </div>
-              <select
-                value={selectedAccount}
-                onChange={(e) => handleAccountChange(e.target.value)}
-                className="rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/40"
-                style={{ background: "var(--accent)", borderColor: "var(--border)", color: "var(--foreground)" }}
+              <p className="text-xs text-center" style={{ color: "var(--muted-foreground)" }}>
+                Seleccioná tu cuenta publicitaria en el menú lateral izquierdo y hacé clic en <strong>Cargar campañas</strong>.
+              </p>
+              {error && <p className="text-xs text-red-400 text-center">{error}</p>}
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400 transition"
+                style={{ borderColor: "var(--border)", color: "var(--muted-foreground)" }}
               >
-                <option value="" disabled>— Seleccioná una cuenta —</option>
-                {[...accounts]
-                  .sort((a, b) => a.name.localeCompare(b.name))
-                  .filter((a) => a.name.toLowerCase().includes(accountSearch.toLowerCase()))
-                  .map((a) => (
-                    <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>
-                  ))}
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium" style={{ color: "var(--muted-foreground)" }}>Período</label>
-              <select
-                value={datePreset}
-                onChange={(e) => setDatePreset(e.target.value as DatePreset)}
-                className="rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/40"
-                style={{ background: "var(--accent)", borderColor: "var(--border)", color: "var(--foreground)" }}
-              >
-                {(Object.entries(DATE_PRESET_LABELS) as [DatePreset, string][]).map(([k, v]) => (
-                  <option key={k} value={k}>{v}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium" style={{ color: "var(--muted-foreground)" }}>Nivel</label>
-              <select
-                value={level}
-                onChange={(e) => setLevel(e.target.value as "campaign" | "adset" | "ad")}
-                className="rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/40"
-                style={{ background: "var(--accent)", borderColor: "var(--border)", color: "var(--foreground)" }}
-              >
-                <option value="campaign">Campaña</option>
-                <option value="adset">Ad Set</option>
-                <option value="ad">Anuncio</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Botón cargar */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <button
-              onClick={loadCampaigns}
-              disabled={loading || !selectedAccount}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 disabled:opacity-50 transition"
-            >
-              {loading
-                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Cargando…</>
-                : <><Zap className="w-3.5 h-3.5" /> Cargar campañas</>
-              }
-            </button>
-            {error && (
-              <div className="flex items-center gap-2">
-                <p className="text-xs text-red-400">{error}</p>
-                <button onClick={retry} className="flex items-center gap-1 text-xs text-blue-400 hover:underline">
-                  <RefreshCw className="w-3 h-3" /> Reintentar
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="flex justify-end">
-            <button
-              onClick={logout}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400 transition"
-              style={{ borderColor: "var(--border)", color: "var(--muted-foreground)" }}
-            >
-              <LogOut className="w-3.5 h-3.5" /> Desconectar
-            </button>
-          </div>
-        </>
+                <LogOut className="w-3.5 h-3.5" /> Desconectar
+              </button>
+            </>
+          )}
+        </div>
       )}
     </div>
   );
 
-  // Modo standalone: sin acordeón
+  /* ── Modo standalone (pantalla inicial) ─────────────────────── */
   if (standalone) {
     return (
       <div className="rounded-xl border w-full" style={{ borderColor: "var(--border)", background: "var(--card)" }}>
         <div className="flex items-center gap-2 px-4 pt-4 pb-2">
           <Zap className="w-4 h-4 text-blue-400" />
           <span className="text-sm font-semibold">Meta API</span>
-          {isConnected && (
-            loading
-              ? <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400"><Loader2 className="w-3 h-3 animate-spin" /> Actualizando…</span>
-              : <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">Conectado</span>
+          {isConnected && !loadingAccounts && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+              Conectado
+            </span>
+          )}
+          {loadingAccounts && (
+            <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400">
+              <Loader2 className="w-3 h-3 animate-spin" /> Cargando…
+            </span>
           )}
         </div>
         {content}
@@ -286,7 +175,7 @@ export function MetaApiConnect({ onData, onConnect, onSettingsChange, externalDa
     );
   }
 
-  // Modo acordeón (usado en la barra cuando ya hay datos)
+  /* ── Modo acordeón ───────────────────────────────────────────── */
   return (
     <div className="rounded-xl border" style={{ borderColor: "var(--border)", background: "var(--card)" }}>
       <button
@@ -297,15 +186,9 @@ export function MetaApiConnect({ onData, onConnect, onSettingsChange, externalDa
           <Zap className="w-4 h-4 text-blue-400" />
           <span>Conectar Meta API</span>
           {isConnected ? (
-            loading ? (
-              <span className="flex items-center gap-1 text-xs font-normal px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400">
-                <Loader2 className="w-3 h-3 animate-spin" /> Actualizando…
-              </span>
-            ) : (
-              <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-                Conectado
-              </span>
-            )
+            <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+              Conectado
+            </span>
           ) : (
             <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400">
               Datos en tiempo real

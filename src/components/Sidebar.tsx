@@ -3,7 +3,7 @@
 import {
   BarChart3, BookMarked, Table2, LineChart, Layers,
   ChevronRight, Menu, X, Zap, ShoppingCart, Users, MessageCircle,
-  LogOut, ChevronDown, Columns2, Loader2, CalendarDays, Search,
+  LogOut, ChevronDown, Columns2, Loader2, CalendarDays, Search, RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -62,6 +62,9 @@ interface MetaQuickSettings {
   onDatePreset: (v: DatePreset) => void;
   onLevel: (v: "campaign" | "adset" | "ad") => void;
   loading?: boolean;
+  onLoad?: () => void;
+  hasData?: boolean;
+  error?: string;
 }
 
 interface SidebarProps {
@@ -79,7 +82,7 @@ interface SidebarProps {
 }
 
 function MetaQuickPanel({ s }: { s: MetaQuickSettings }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true); // abierto por defecto la primera vez
   const [search, setSearch] = useState("");
 
   const sortedAccounts = [...s.accounts].sort((a, b) => a.name.localeCompare(b.name));
@@ -87,54 +90,56 @@ function MetaQuickPanel({ s }: { s: MetaQuickSettings }) {
     a.name.toLowerCase().includes(search.toLowerCase())
   );
 
+  const accountLabel = s.accountName || (s.accountId ? s.accountId : "Seleccioná una cuenta");
+
   return (
     <div className="mt-1 mb-1">
+      {/* Header colapsable */}
       <button
         onClick={() => setOpen(!open)}
         className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-xs font-medium hover:bg-accent/60 transition"
         style={{ color: "var(--muted-foreground)" }}
       >
         <Zap className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-        <span className="flex-1 truncate text-left">{s.accountName || "Meta API"}</span>
+        <span className="flex-1 truncate text-left">{accountLabel}</span>
         {s.loading && <Loader2 className="w-3 h-3 animate-spin text-blue-400 shrink-0" />}
         <ChevronDown className={cn("w-3 h-3 transition-transform shrink-0", open && "rotate-180")} />
       </button>
 
       {open && (
-        <div className="mx-2 mb-1 rounded-lg border p-2 flex flex-col gap-2" style={{ borderColor: "var(--border)", background: "var(--accent)/50" }}>
+        <div className="mx-2 mb-1 rounded-lg border p-2 flex flex-col gap-2" style={{ borderColor: "var(--border)" }}>
 
-          {s.accounts.length > 1 && (
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-medium uppercase" style={{ color: "var(--muted-foreground)" }}>Portfolio</label>
-              {/* Buscador */}
-              <div className="relative">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none" style={{ color: "var(--muted-foreground)" }} />
-                <input
-                  type="text"
-                  placeholder="Buscar cuenta…"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full rounded-lg border pl-6 pr-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-500/40"
-                  style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}
-                />
-              </div>
-              <select
-                value={s.accountId}
-                onChange={(e) => s.onAccount(e.target.value)}
-                className="rounded-lg border px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-500/40"
+          {/* Cuenta publicitaria */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-medium uppercase" style={{ color: "var(--muted-foreground)" }}>Cuenta</label>
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none" style={{ color: "var(--muted-foreground)" }} />
+              <input
+                type="text"
+                placeholder="Buscar cuenta…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-lg border pl-6 pr-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-500/40"
                 style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}
-              >
-                {!s.accountId && <option value="" disabled>— Seleccioná una cuenta —</option>}
-                {filteredAccounts.map((a) => (
-                  <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>
-                ))}
-                {filteredAccounts.length === 0 && (
-                  <option disabled>Sin resultados</option>
-                )}
-              </select>
+              />
             </div>
-          )}
+            <select
+              value={s.accountId}
+              onChange={(e) => s.onAccount(e.target.value)}
+              className="rounded-lg border px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-500/40"
+              style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}
+            >
+              {!s.accountId && <option value="" disabled>— Seleccioná una cuenta —</option>}
+              {filteredAccounts.map((a) => (
+                <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>
+              ))}
+              {filteredAccounts.length === 0 && (
+                <option disabled>Sin resultados</option>
+              )}
+            </select>
+          </div>
 
+          {/* Período */}
           <div className="flex flex-col gap-1">
             <label className="text-[10px] font-medium uppercase" style={{ color: "var(--muted-foreground)" }}>Período</label>
             <select
@@ -149,6 +154,7 @@ function MetaQuickPanel({ s }: { s: MetaQuickSettings }) {
             </select>
           </div>
 
+          {/* Nivel */}
           <div className="flex flex-col gap-1">
             <label className="text-[10px] font-medium uppercase" style={{ color: "var(--muted-foreground)" }}>Nivel</label>
             <select
@@ -162,6 +168,28 @@ function MetaQuickPanel({ s }: { s: MetaQuickSettings }) {
               <option value="ad">Anuncio</option>
             </select>
           </div>
+
+          {/* Botón cargar */}
+          {s.onLoad && (
+            <button
+              onClick={s.onLoad}
+              disabled={s.loading || !s.accountId}
+              className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50 transition"
+            >
+              {s.loading ? (
+                <><Loader2 className="w-3 h-3 animate-spin" /> Cargando…</>
+              ) : s.hasData ? (
+                <><RefreshCw className="w-3 h-3" /> Recargar</>
+              ) : (
+                <><Zap className="w-3 h-3" /> Cargar campañas</>
+              )}
+            </button>
+          )}
+
+          {/* Error */}
+          {s.error && (
+            <p className="text-[10px] text-red-400 text-center">{s.error}</p>
+          )}
         </div>
       )}
     </div>

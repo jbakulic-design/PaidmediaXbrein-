@@ -32,6 +32,7 @@ import { computeAlerts } from "@/lib/alerts";
 import type { GitHubConfig } from "@/lib/githubStorage";
 import { nanoid } from "@/lib/utils";
 import { fetchCampaignInsights, type MetaAdAccount, type DatePreset } from "@/lib/metaApi";
+import { saveSelectedAccount, loadSelectedAccount } from "@/lib/useFacebookSDK";
 import {
   DollarSign, TrendingUp, Users,
   MousePointerClick, ShoppingCart, Zap,
@@ -70,8 +71,14 @@ export default function Dashboard() {
   const [metaDatePreset, setMetaDatePreset] = useState<DatePreset>("last_30d");
   const [metaLevel, setMetaLevel] = useState<"campaign" | "adset" | "ad">("campaign");
 
-  // Tracks what was last fetched to avoid re-fetching what MetaApiConnect already loaded
+  // Estado previo al primer load: token + cuentas + cuenta seleccionada
+  const [earlyToken, setEarlyToken] = useState<string | null>(null);
+  const [earlyAccounts, setEarlyAccounts] = useState<MetaAdAccount[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState("");
+
+  // Evita re-fetch del mismo key y rastrear si se cargó al menos una vez
   const lastFetchedKeyRef = useRef("");
+  const hasLoadedRef = useRef(false);
 
   const {
     workspaces, activeWorkspace, createWorkspace,
@@ -86,36 +93,69 @@ export default function Dashboard() {
     [campaigns, targets]
   );
 
-  // Auto-refresh when account, period, or level changes from sidebar
-  useEffect(() => {
-    if (!metaConnection || dataSource !== "meta") return;
-    const key = `${metaConnection.accountId}__${metaDatePreset}__${metaLevel}`;
-    if (lastFetchedKeyRef.current === key) return; // already have this data
+  /** Llamado por MetaApiConnect cuando el token está listo y las cuentas cargaron */
+  const handleMetaReady = useCallback((token: string, accounts: MetaAdAccount[]) => {
+    setEarlyToken(token);
+    setEarlyAccounts(accounts);
+    // Restaurar cuenta guardada si existe
+    const saved = loadSelectedAccount();
+    const exists = accounts.find((a) => a.id === saved);
+    setSelectedAccountId(exists ? saved : "");
+  }, []);
+
+  /** Ejecuta el fetch de campañas — solo se llama desde el botón del sidebar */
+  const doFetchCampaigns = useCallback((
+    token: string,
+    accountId: string,
+    datePreset: DatePreset,
+    level: "campaign" | "adset" | "ad",
+    accounts: MetaAdAccount[],
+  ) => {
+    const key = `${accountId}__${datePreset}__${level}`;
+    if (lastFetchedKeyRef.current === key) return;
     lastFetchedKeyRef.current = key;
-    let cancelled = false;
     setMetaLoading(true);
     setMetaError("");
-    fetchCampaignInsights(metaConnection.token, metaConnection.accountId, metaDatePreset, metaLevel)
-      .then((c) => { if (!cancelled) setCampaigns(c); })
-      .catch((e) => { if (!cancelled) setMetaError(e instanceof Error ? e.message : "Error al obtener datos"); })
-      .finally(() => { if (!cancelled) setMetaLoading(false); });
-    return () => { cancelled = true; };
-  }, [metaConnection?.accountId, metaDatePreset, metaLevel, dataSource]);
-
-  const handleMetaConnect = useCallback((token: string, accountId: string, accountName: string, accounts: MetaAdAccount[]) => {
-    setMetaConnection({ token, accountId, accountName, accounts });
-    // Set the lastFetchedKey so the useEffect above skips re-fetching what MetaApiConnect already loaded
-    lastFetchedKeyRef.current = `${accountId}__${metaDatePreset}__${metaLevel}`;
-  }, [metaDatePreset, metaLevel]);
-
-  const handleMetaAccount = useCallback((accountId: string) => {
-    setMetaConnection((prev) => {
-      if (!prev) return null;
-      const account = prev.accounts.find((a) => a.id === accountId);
-      return { ...prev, accountId, accountName: account?.name ?? "" };
-    });
-    lastFetchedKeyRef.current = ""; // force re-fetch with new account
+    fetchCampaignInsights(token, accountId, datePreset, level)
+      .then((c) => {
+        setCampaigns(c);
+        setLabels({});
+        setDataSource("meta");
+        const account = accounts.find((a) => a.id === accountId);
+        setMetaConnection({ token, accountId, accountName: account?.name ?? "", accounts });
+        hasLoadedRef.current = true;
+      })
+      .catch((e) => {
+        setMetaError(e instanceof Error ? e.message : "Error al obtener datos");
+        lastFetchedKeyRef.current = ""; // permite reintentar
+      })
+      .finally(() => setMetaLoading(false));
   }, []);
+
+  /** Botón "Cargar campañas" / "Recargar" del sidebar */
+  const handleLoadCampaigns = useCallback(() => {
+    if (!earlyToken || !selectedAccountId) return;
+    lastFetchedKeyRef.current = ""; // forzar re-fetch al hacer clic manual
+    doFetchCampaigns(earlyToken, selectedAccountId, metaDatePreset, metaLevel, earlyAccounts);
+  }, [earlyToken, selectedAccountId, metaDatePreset, metaLevel, earlyAccounts, doFetchCampaigns]);
+
+  /** Cambio de cuenta desde el sidebar — actualiza selección y recarga si ya había datos */
+  const handleMetaAccount = useCallback((accountId: string) => {
+    setSelectedAccountId(accountId);
+    saveSelectedAccount(accountId);
+    if (hasLoadedRef.current && earlyToken) {
+      lastFetchedKeyRef.current = "";
+      doFetchCampaigns(earlyToken, accountId, metaDatePreset, metaLevel, earlyAccounts);
+    }
+  }, [earlyToken, metaDatePreset, metaLevel, earlyAccounts, doFetchCampaigns]);
+
+  /** Auto-recarga cuando cambia período o nivel (solo si ya se cargó antes) */
+  useEffect(() => {
+    if (!hasLoadedRef.current || !earlyToken || !selectedAccountId) return;
+    lastFetchedKeyRef.current = "";
+    doFetchCampaigns(earlyToken, selectedAccountId, metaDatePreset, metaLevel, earlyAccounts);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [metaDatePreset, metaLevel]);
 
   const handleUpdateCampaignTargets = useCallback((id: string, customTargets: Partial<MetaTargets>) => {
     setCampaigns((prev) =>
@@ -189,16 +229,19 @@ export default function Dashboard() {
         campaignType={campaignType}
         onCampaignType={setCampaignType}
         onLogout={logout}
-        metaQuick={dataSource === "meta" && metaConnection ? {
-          accountName: metaConnection.accountName,
-          accountId: metaConnection.accountId,
-          accounts: metaConnection.accounts,
+        metaQuick={earlyToken ? {
+          accountName: earlyAccounts.find((a) => a.id === selectedAccountId)?.name ?? metaConnection?.accountName ?? "",
+          accountId: selectedAccountId,
+          accounts: earlyAccounts,
           datePreset: metaDatePreset,
           level: metaLevel,
           onAccount: handleMetaAccount,
           onDatePreset: setMetaDatePreset,
           onLevel: setMetaLevel,
           loading: metaLoading,
+          onLoad: handleLoadCampaigns,
+          hasData: campaigns.length > 0,
+          error: metaError || undefined,
         } : undefined}
       />
 
@@ -296,11 +339,18 @@ export default function Dashboard() {
                   {selectedSource === "meta" && (
                     <MetaApiConnect
                       standalone
-                      externalDatePreset={metaDatePreset}
-                      externalLevel={metaLevel}
-                      onData={(c) => { setCampaigns(c); setLabels({}); setDataSource("meta"); }}
-                      onConnect={handleMetaConnect}
-                      onSettingsChange={(dp, lv) => { setMetaDatePreset(dp); setMetaLevel(lv); }}
+                      onReady={handleMetaReady}
+                      onDisconnect={() => {
+                        setEarlyToken(null);
+                        setEarlyAccounts([]);
+                        setSelectedAccountId("");
+                        setMetaConnection(null);
+                        setCampaigns([]);
+                        setDataSource(null);
+                        setSelectedSource(null);
+                        hasLoadedRef.current = false;
+                        lastFetchedKeyRef.current = "";
+                      }}
                     />
                   )}
                   {selectedSource === "excel" && (
@@ -348,7 +398,9 @@ export default function Dashboard() {
                         onClick={() => {
                           setCampaigns([]); setLabels({}); setDataSource(null);
                           setSelectedSource(null); setMetaConnection(null);
+                          hasLoadedRef.current = false;
                           lastFetchedKeyRef.current = "";
+                          // No limpiamos earlyToken/earlyAccounts — usuario sigue conectado
                         }}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border hover:bg-accent/60 transition"
                         style={{ borderColor: "var(--border)", color: "var(--muted-foreground)" }}
