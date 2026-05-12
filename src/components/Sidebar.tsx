@@ -124,6 +124,7 @@ function MetaQuickPanel({ s }: { s: MetaQuickSettings }) {
                 className="rounded-lg border px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-500/40"
                 style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}
               >
+                {!s.accountId && <option value="" disabled>— Seleccioná una cuenta —</option>}
                 {filteredAccounts.map((a) => (
                   <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>
                 ))}

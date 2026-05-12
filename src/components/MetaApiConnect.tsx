@@ -53,11 +53,10 @@ export function MetaApiConnect({ onData, onConnect, onSettingsChange, externalDa
     fetchAdAccounts(token)
       .then((accs) => {
         setAccounts(accs);
-        // Restaurar cuenta guardada o usar la primera
+        // Restaurar cuenta guardada si existe, sino dejar vacío para que el usuario elija
         const saved = loadSelectedAccount();
         const exists = accs.find((a) => a.id === saved);
-        const defaultId = exists ? saved : (accs[0]?.id ?? "");
-        setSelectedAccount(defaultId);
+        setSelectedAccount(exists ? saved : "");
       })
       .catch((e) => setError(e instanceof Error ? e.message : "Error al cargar cuentas"));
   }, [token]);
@@ -190,6 +189,7 @@ export function MetaApiConnect({ onData, onConnect, onSettingsChange, externalDa
                 className="rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/40"
                 style={{ background: "var(--accent)", borderColor: "var(--border)", color: "var(--foreground)" }}
               >
+                <option value="" disabled>— Seleccioná una cuenta —</option>
                 {[...accounts]
                   .sort((a, b) => a.name.localeCompare(b.name))
                   .filter((a) => a.name.toLowerCase().includes(accountSearch.toLowerCase()))
