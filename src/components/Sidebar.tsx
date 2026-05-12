@@ -3,7 +3,7 @@
 import {
   BarChart3, BookMarked, Table2, LineChart, Layers,
   ChevronRight, Menu, X, Zap, ShoppingCart, Users, MessageCircle,
-  LogOut, ChevronDown, Columns2, Loader2, CalendarDays,
+  LogOut, ChevronDown, Columns2, Loader2, CalendarDays, Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -80,6 +80,12 @@ interface SidebarProps {
 
 function MetaQuickPanel({ s }: { s: MetaQuickSettings }) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const sortedAccounts = [...s.accounts].sort((a, b) => a.name.localeCompare(b.name));
+  const filteredAccounts = sortedAccounts.filter((a) =>
+    a.name.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div className="mt-1 mb-1">
@@ -100,15 +106,31 @@ function MetaQuickPanel({ s }: { s: MetaQuickSettings }) {
           {s.accounts.length > 1 && (
             <div className="flex flex-col gap-1">
               <label className="text-[10px] font-medium uppercase" style={{ color: "var(--muted-foreground)" }}>Portfolio</label>
+              {/* Buscador */}
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none" style={{ color: "var(--muted-foreground)" }} />
+                <input
+                  type="text"
+                  placeholder="Buscar cuenta…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full rounded-lg border pl-6 pr-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-500/40"
+                  style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}
+                />
+              </div>
               <select
                 value={s.accountId}
                 onChange={(e) => s.onAccount(e.target.value)}
+                size={Math.min(filteredAccounts.length + 1, 6)}
                 className="rounded-lg border px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-500/40"
                 style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}
               >
-                {s.accounts.map((a) => (
+                {filteredAccounts.map((a) => (
                   <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>
                 ))}
+                {filteredAccounts.length === 0 && (
+                  <option disabled>Sin resultados</option>
+                )}
               </select>
             </div>
           )}

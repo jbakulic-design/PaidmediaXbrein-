@@ -10,7 +10,7 @@ import {
   type DatePreset,
 } from "@/lib/metaApi";
 import { useFacebookSDK, saveSelectedAccount, loadSelectedAccount } from "@/lib/useFacebookSDK";
-import { Loader2, Zap, ChevronDown, ChevronUp, LogOut, RefreshCw, Key } from "lucide-react";
+import { Loader2, Zap, ChevronDown, ChevronUp, LogOut, RefreshCw, Key, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -36,6 +36,7 @@ export function MetaApiConnect({ onData, onConnect, onSettingsChange, externalDa
   const [retryCount, setRetryCount] = useState(0);
   const [showTokenInput, setShowTokenInput] = useState(false);
   const [tokenDraft, setTokenDraft] = useState("");
+  const [accountSearch, setAccountSearch] = useState("");
 
   const onDataRef = useRef(onData);
   onDataRef.current = onData;
@@ -172,15 +173,31 @@ export function MetaApiConnect({ onData, onConnect, onSettingsChange, externalDa
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium" style={{ color: "var(--muted-foreground)" }}>Cuenta publicitaria</label>
+              {/* Buscador */}
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: "var(--muted-foreground)" }} />
+                <input
+                  type="text"
+                  placeholder="Buscar cuenta…"
+                  value={accountSearch}
+                  onChange={(e) => setAccountSearch(e.target.value)}
+                  className="w-full rounded-lg border pl-7 pr-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/40"
+                  style={{ background: "var(--accent)", borderColor: "var(--border)", color: "var(--foreground)" }}
+                />
+              </div>
               <select
                 value={selectedAccount}
                 onChange={(e) => handleAccountChange(e.target.value)}
+                size={Math.min([...accounts].filter(a => a.name.toLowerCase().includes(accountSearch.toLowerCase())).length + 1, 6)}
                 className="rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/40"
                 style={{ background: "var(--accent)", borderColor: "var(--border)", color: "var(--foreground)" }}
               >
-                {accounts.map((a) => (
-                  <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>
-                ))}
+                {[...accounts]
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .filter((a) => a.name.toLowerCase().includes(accountSearch.toLowerCase()))
+                  .map((a) => (
+                    <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>
+                  ))}
               </select>
             </div>
 
