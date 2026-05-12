@@ -121,7 +121,6 @@ function MetaQuickPanel({ s }: { s: MetaQuickSettings }) {
               <select
                 value={s.accountId}
                 onChange={(e) => s.onAccount(e.target.value)}
-                size={Math.min(filteredAccounts.length + 1, 6)}
                 className="rounded-lg border px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-500/40"
                 style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}
               >

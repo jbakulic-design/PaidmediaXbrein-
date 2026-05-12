@@ -188,7 +188,6 @@ export function MetaApiConnect({ onData, onConnect, onSettingsChange, externalDa
               <select
                 value={selectedAccount}
                 onChange={(e) => handleAccountChange(e.target.value)}
-                size={Math.min([...accounts].filter(a => a.name.toLowerCase().includes(accountSearch.toLowerCase())).length + 1, 6)}
                 className="rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/40"
                 style={{ background: "var(--accent)", borderColor: "var(--border)", color: "var(--foreground)" }}
               >
