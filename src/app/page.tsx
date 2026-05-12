@@ -405,8 +405,6 @@ export default function Dashboard() {
 
                   <BenchmarksPanel totals={totals} targets={targets} campaignType={campaignType} />
 
-                  <BudgetProjection campaigns={analyzed} datePreset={metaDatePreset} />
-
                   {/* Contenido de la sub-pestaña activa */}
                   {analysisTab === "table" && (
                     <CampaignTable data={analyzed} labels={labels} onUpdateTargets={handleUpdateCampaignTargets} />
@@ -424,6 +422,9 @@ export default function Dashboard() {
                   )}
                   {analysisTab === "compare" && (
                     <ComparePanel campaigns={analyzed} campaignType={campaignType} />
+                  )}
+                  {analysisTab === "budget" && (
+                    <BudgetProjection campaigns={analyzed} datePreset={metaDatePreset} />
                   )}
                 </>
               )}

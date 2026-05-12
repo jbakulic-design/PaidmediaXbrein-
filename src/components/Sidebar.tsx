@@ -3,7 +3,7 @@
 import {
   BarChart3, BookMarked, Table2, LineChart, Layers,
   ChevronRight, Menu, X, Zap, ShoppingCart, Users, MessageCircle,
-  LogOut, ChevronDown, Columns2, Loader2,
+  LogOut, ChevronDown, Columns2, Loader2, CalendarDays,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -11,7 +11,7 @@ import type { MetaAdAccount, DatePreset } from "@/lib/metaApi";
 import { DATE_PRESET_LABELS } from "@/lib/metaApi";
 
 export type MainTab = "analysis" | "reports";
-export type AnalysisTab = "table" | "charts" | "structure" | "compare";
+export type AnalysisTab = "table" | "charts" | "structure" | "compare" | "budget";
 export type CampaignType = "ecommerce" | "leads" | "messages";
 
 export const CAMPAIGN_TYPE_CONFIG: Record<CampaignType, {
@@ -45,10 +45,11 @@ export const CAMPAIGN_TYPE_CONFIG: Record<CampaignType, {
 };
 
 const ANALYSIS_TABS: { key: AnalysisTab; label: string; icon: React.ReactNode; requiresMeta?: boolean }[] = [
-  { key: "table",     label: "Tabla",      icon: <Table2    className="w-3.5 h-3.5" /> },
-  { key: "charts",    label: "Gráficos",   icon: <LineChart className="w-3.5 h-3.5" /> },
-  { key: "compare",   label: "Comparar",   icon: <Columns2  className="w-3.5 h-3.5" /> },
-  { key: "structure", label: "Estructura", icon: <Layers    className="w-3.5 h-3.5" />, requiresMeta: true },
+  { key: "table",     label: "Tabla",        icon: <Table2       className="w-3.5 h-3.5" /> },
+  { key: "charts",    label: "Gráficos",     icon: <LineChart    className="w-3.5 h-3.5" /> },
+  { key: "compare",   label: "Comparar",     icon: <Columns2     className="w-3.5 h-3.5" /> },
+  { key: "budget",    label: "Presupuesto",  icon: <CalendarDays className="w-3.5 h-3.5" /> },
+  { key: "structure", label: "Estructura",   icon: <Layers       className="w-3.5 h-3.5" />, requiresMeta: true },
 ];
 
 interface MetaQuickSettings {
