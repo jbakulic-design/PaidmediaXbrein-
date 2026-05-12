@@ -28,16 +28,59 @@ export const DATE_PRESET_LABELS: Record<DatePreset, string> = {
   last_month: "Mes anterior",
 };
 
-export async function fetchAdAccounts(token: string): Promise<MetaAdAccount[]> {
-  const res = await fetch(
-    `${GRAPH}/me/adaccounts?fields=id,name,currency&limit=50&access_token=${token}`
-  );
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error?.message ?? `Error ${res.status}`);
+async function fetchAllPages<T>(url: string): Promise<T[]> {
+  const results: T[] = [];
+  let next: string | null = url;
+  while (next) {
+    const res = await fetch(next);
+    if (!res.ok) break;
+    const data = await res.json();
+    results.push(...(data.data ?? []));
+    next = data.paging?.next ?? null;
   }
-  const data = await res.json();
-  return (data.data ?? []) as MetaAdAccount[];
+  return results;
+}
+
+export async function fetchAdAccounts(token: string): Promise<MetaAdAccount[]> {
+  const t = `access_token=${token}`;
+
+  // 1. Cuentas directas del usuario
+  const directAccounts = await fetchAllPages<MetaAdAccount>(
+    `${GRAPH}/me/adaccounts?fields=id,name,currency&limit=100&${t}`
+  );
+
+  // 2. Cuentas via Business Managers
+  let bizAccounts: MetaAdAccount[] = [];
+  try {
+    const businesses = await fetchAllPages<{ id: string }>(
+      `${GRAPH}/me/businesses?fields=id&limit=50&${t}`
+    );
+    const bizResults = await Promise.all(
+      businesses.map(async (biz) => {
+        const [owned, client] = await Promise.all([
+          fetchAllPages<MetaAdAccount>(
+            `${GRAPH}/${biz.id}/owned_ad_accounts?fields=id,name,currency&limit=100&${t}`
+          ),
+          fetchAllPages<MetaAdAccount>(
+            `${GRAPH}/${biz.id}/client_ad_accounts?fields=id,name,currency&limit=100&${t}`
+          ),
+        ]);
+        return [...owned, ...client];
+      })
+    );
+    bizAccounts = bizResults.flat();
+  } catch {
+    // Si no tiene permisos de business_management, ignorar
+  }
+
+  // Deduplicar por ID
+  const all = [...directAccounts, ...bizAccounts];
+  const seen = new Set<string>();
+  return all.filter((a) => {
+    if (seen.has(a.id)) return false;
+    seen.add(a.id);
+    return true;
+  });
 }
 
 interface RawInsight {
