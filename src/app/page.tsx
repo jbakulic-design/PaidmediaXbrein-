@@ -22,6 +22,7 @@ import { CreativeFatigueChart } from "@/components/CreativeFatigueChart";
 import { StructureOverview } from "@/components/StructureOverview";
 import { ComparePanel } from "@/components/ComparePanel";
 import { BudgetProjection } from "@/components/BudgetProjection";
+import { SpendChart } from "@/components/SpendChart";
 import { Sidebar, type CampaignType, type MainTab, type AnalysisTab, CAMPAIGN_TYPE_CONFIG } from "@/components/Sidebar";
 import { LoginGate } from "@/components/LoginGate";
 import { useReports } from "@/lib/useReports";
@@ -411,6 +412,7 @@ export default function Dashboard() {
                   )}
                   {analysisTab === "charts" && (
                     <div className="flex flex-col gap-4">
+                      <SpendChart data={analyzed} />
                       <PerformanceChart data={analyzed} />
                       <CreativeFatigueChart data={analyzed} maxFrequency={targets.maxFrequency} targetCtr={targets.ctr} />
                       <PlacementBreakdown data={analyzed} />
