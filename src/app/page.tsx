@@ -21,6 +21,7 @@ import { AlertsBell } from "@/components/AlertsBell";
 import { CreativeFatigueChart } from "@/components/CreativeFatigueChart";
 import { StructureOverview } from "@/components/StructureOverview";
 import { ComparePanel } from "@/components/ComparePanel";
+import { BudgetProjection } from "@/components/BudgetProjection";
 import { Sidebar, type CampaignType, type MainTab, type AnalysisTab, CAMPAIGN_TYPE_CONFIG } from "@/components/Sidebar";
 import { LoginGate } from "@/components/LoginGate";
 import { useReports } from "@/lib/useReports";
@@ -403,6 +404,8 @@ export default function Dashboard() {
                   })()}
 
                   <BenchmarksPanel totals={totals} targets={targets} campaignType={campaignType} />
+
+                  <BudgetProjection campaigns={analyzed} datePreset={metaDatePreset} />
 
                   {/* Contenido de la sub-pestaña activa */}
                   {analysisTab === "table" && (
