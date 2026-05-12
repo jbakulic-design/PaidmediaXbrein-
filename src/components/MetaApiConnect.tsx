@@ -68,29 +68,28 @@ export function MetaApiConnect({ onData, onConnect, onSettingsChange, externalDa
     saveSelectedAccount(id);
   };
 
-  // Auto-carga al cambiar cuenta, período o nivel
-  useEffect(() => {
+  // Carga manual — solo se ejecuta al presionar "Cargar campañas"
+  const loadCampaigns = () => {
     if (!token || !selectedAccount) return;
-    let cancelled = false;
     setLoading(true);
     setError("");
     fetchCampaignInsights(token, selectedAccount, datePreset, level)
       .then((campaigns) => {
-        if (!cancelled) {
-          onDataRef.current(campaigns);
-          const accountName = accounts.find((a) => a.id === selectedAccount)?.name ?? "";
-          onConnect?.(token, selectedAccount, accountName, accounts);
-          if (!standalone) setOpen(false);
-        }
+        onDataRef.current(campaigns);
+        const accountName = accounts.find((a) => a.id === selectedAccount)?.name ?? "";
+        onConnect?.(token, selectedAccount, accountName, accounts);
+        if (!standalone) setOpen(false);
       })
-      .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Error al obtener datos");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => { cancelled = true; };
-  }, [token, selectedAccount, datePreset, level, retryCount]);
+      .catch((e) => setError(e instanceof Error ? e.message : "Error al obtener datos"))
+      .finally(() => setLoading(false));
+  };
+
+  // Solo re-carga automática cuando cambia período/nivel si ya hay datos cargados (retryCount)
+  useEffect(() => {
+    if (!token || !selectedAccount || retryCount === 0) return;
+    loadCampaigns();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [retryCount]);
 
   const isConnected = fbStatus === "connected" && !!token;
 
@@ -229,20 +228,27 @@ export function MetaApiConnect({ onData, onConnect, onSettingsChange, externalDa
             </div>
           </div>
 
-          {loading && (
-            <div className="flex items-center gap-2 text-xs" style={{ color: "var(--muted-foreground)" }}>
-              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Cargando campañas…
-            </div>
-          )}
-
-          {error && (
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs text-red-400">{error}</p>
-              <button onClick={retry} className="flex items-center gap-1 text-xs text-blue-400 hover:underline">
-                <RefreshCw className="w-3 h-3" /> Reintentar
-              </button>
-            </div>
-          )}
+          {/* Botón cargar */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <button
+              onClick={loadCampaigns}
+              disabled={loading || !selectedAccount}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 disabled:opacity-50 transition"
+            >
+              {loading
+                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Cargando…</>
+                : <><Zap className="w-3.5 h-3.5" /> Cargar campañas</>
+              }
+            </button>
+            {error && (
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-red-400">{error}</p>
+                <button onClick={retry} className="flex items-center gap-1 text-xs text-blue-400 hover:underline">
+                  <RefreshCw className="w-3 h-3" /> Reintentar
+                </button>
+              </div>
+            )}
+          </div>
 
           <div className="flex justify-end">
             <button
