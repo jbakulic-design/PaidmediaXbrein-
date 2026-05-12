@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 
 const FB_APP_ID = "1010904391689357";
 const FB_VERSION = "v19.0";
-const TOKEN_KEY = "paidmedia_fb_token_v1";
+const TOKEN_KEY    = "paidmedia_fb_token_v1";
+const ACCOUNT_KEY  = "paidmedia_fb_account_v1";
 
 declare global {
   interface Window {
@@ -23,7 +24,6 @@ export type FBStatus = "idle" | "loading" | "connected" | "error";
 function loadSdk(onReady: () => void) {
   if (window.FB) { onReady(); return; }
   if (document.getElementById("facebook-jssdk")) {
-    // Script already in DOM but FB not yet ready — wait for it
     const existing = window.fbAsyncInit;
     window.fbAsyncInit = () => { existing?.(); onReady(); };
     return;
@@ -45,7 +45,6 @@ export function useFacebookSDK() {
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
-    // Restore token from localStorage — no SDK needed for this
     const stored = localStorage.getItem(TOKEN_KEY);
     if (stored) {
       setToken(stored);
@@ -73,13 +72,31 @@ export function useFacebookSDK() {
     });
   };
 
+  // Permite ingresar un token manualmente (ej: token de larga duración)
+  const loginWithToken = (manualToken: string) => {
+    const clean = manualToken.trim();
+    if (!clean) return;
+    localStorage.setItem(TOKEN_KEY, clean);
+    setToken(clean);
+    setStatus("connected");
+  };
+
   const logout = () => {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(ACCOUNT_KEY);
     setToken(null);
     setStatus("idle");
-    // Best-effort FB session invalidation (won't fail if SDK not loaded)
     if (window.FB) window.FB.logout(() => {});
   };
 
-  return { status, token, login, logout };
+  return { status, token, login, loginWithToken, logout };
+}
+
+// Helpers para persistir la cuenta seleccionada
+export function saveSelectedAccount(accountId: string) {
+  try { localStorage.setItem(ACCOUNT_KEY, accountId); } catch { /* ignore */ }
+}
+
+export function loadSelectedAccount(): string {
+  try { return localStorage.getItem(ACCOUNT_KEY) ?? ""; } catch { return ""; }
 }

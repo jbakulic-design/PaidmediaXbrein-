@@ -9,8 +9,8 @@ import {
   type MetaAdAccount,
   type DatePreset,
 } from "@/lib/metaApi";
-import { useFacebookSDK } from "@/lib/useFacebookSDK";
-import { Loader2, Zap, ChevronDown, ChevronUp, LogOut, RefreshCw } from "lucide-react";
+import { useFacebookSDK, saveSelectedAccount, loadSelectedAccount } from "@/lib/useFacebookSDK";
+import { Loader2, Zap, ChevronDown, ChevronUp, LogOut, RefreshCw, Key } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -25,15 +25,17 @@ interface Props {
 
 export function MetaApiConnect({ onData, onConnect, onSettingsChange, externalDatePreset, externalLevel, defaultOpen = false, standalone = false }: Props) {
   const [open, setOpen] = useState(standalone || defaultOpen);
-  const { status: fbStatus, token, login, logout } = useFacebookSDK();
+  const { status: fbStatus, token, login, loginWithToken, logout } = useFacebookSDK();
 
   const [accounts, setAccounts] = useState<MetaAdAccount[]>([]);
-  const [selectedAccount, setSelectedAccount] = useState("");
+  const [selectedAccount, setSelectedAccount] = useState(() => loadSelectedAccount());
   const [datePreset, setDatePreset] = useState<DatePreset>(externalDatePreset ?? "last_30d");
   const [level, setLevel] = useState<"campaign" | "adset" | "ad">(externalLevel ?? "campaign");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [retryCount, setRetryCount] = useState(0);
+  const [showTokenInput, setShowTokenInput] = useState(false);
+  const [tokenDraft, setTokenDraft] = useState("");
 
   const onDataRef = useRef(onData);
   onDataRef.current = onData;
@@ -50,10 +52,20 @@ export function MetaApiConnect({ onData, onConnect, onSettingsChange, externalDa
     fetchAdAccounts(token)
       .then((accs) => {
         setAccounts(accs);
-        if (accs.length > 0) setSelectedAccount(accs[0].id);
+        // Restaurar cuenta guardada o usar la primera
+        const saved = loadSelectedAccount();
+        const exists = accs.find((a) => a.id === saved);
+        const defaultId = exists ? saved : (accs[0]?.id ?? "");
+        setSelectedAccount(defaultId);
       })
       .catch((e) => setError(e instanceof Error ? e.message : "Error al cargar cuentas"));
   }, [token]);
+
+  // Persistir cuenta seleccionada al cambiarla
+  const handleAccountChange = (id: string) => {
+    setSelectedAccount(id);
+    saveSelectedAccount(id);
+  };
 
   // Auto-carga al cambiar cuenta, período o nivel
   useEffect(() => {
@@ -88,21 +100,72 @@ export function MetaApiConnect({ onData, onConnect, onSettingsChange, externalDa
           <p className="text-xs text-center" style={{ color: "var(--muted-foreground)" }}>
             Iniciá sesión con tu cuenta de Meta para cargar las campañas directamente.
           </p>
-          <button
-            onClick={login}
-            disabled={fbStatus === "loading"}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold text-white transition"
-            style={{ background: "#1877F2" }}
-          >
-            {fbStatus === "loading" ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-              </svg>
-            )}
-            Continuar con Facebook
-          </button>
+
+          {!showTokenInput ? (
+            <>
+              <button
+                onClick={login}
+                disabled={fbStatus === "loading"}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold text-white transition"
+                style={{ background: "#1877F2" }}
+              >
+                {fbStatus === "loading" ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                  </svg>
+                )}
+                Continuar con Facebook
+              </button>
+              <button
+                onClick={() => setShowTokenInput(true)}
+                className="flex items-center gap-1.5 text-xs hover:underline"
+                style={{ color: "var(--muted-foreground)" }}
+              >
+                <Key className="w-3 h-3" /> Ingresar token manualmente
+              </button>
+            </>
+          ) : (
+            <div className="flex flex-col gap-2 w-full max-w-sm">
+              <p className="text-xs text-center" style={{ color: "var(--muted-foreground)" }}>
+                Pegá tu token de acceso de Meta (se guardará automáticamente)
+              </p>
+              <input
+                autoFocus
+                type="text"
+                placeholder="EAAS..."
+                value={tokenDraft}
+                onChange={(e) => setTokenDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && tokenDraft.trim()) {
+                    loginWithToken(tokenDraft);
+                    setShowTokenInput(false);
+                    setTokenDraft("");
+                  }
+                  if (e.key === "Escape") setShowTokenInput(false);
+                }}
+                className="w-full rounded-lg border px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500/40"
+                style={{ background: "var(--accent)", borderColor: "var(--border)", color: "var(--foreground)" }}
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { loginWithToken(tokenDraft); setShowTokenInput(false); setTokenDraft(""); }}
+                  disabled={!tokenDraft.trim()}
+                  className="flex-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-500 text-white disabled:opacity-50"
+                >
+                  Conectar
+                </button>
+                <button
+                  onClick={() => { setShowTokenInput(false); setTokenDraft(""); }}
+                  className="px-3 py-1.5 rounded-lg text-xs border"
+                  style={{ borderColor: "var(--border)", color: "var(--muted-foreground)" }}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <>
@@ -111,7 +174,7 @@ export function MetaApiConnect({ onData, onConnect, onSettingsChange, externalDa
               <label className="text-xs font-medium" style={{ color: "var(--muted-foreground)" }}>Cuenta publicitaria</label>
               <select
                 value={selectedAccount}
-                onChange={(e) => setSelectedAccount(e.target.value)}
+                onChange={(e) => handleAccountChange(e.target.value)}
                 className="rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/40"
                 style={{ background: "var(--accent)", borderColor: "var(--border)", color: "var(--foreground)" }}
               >
