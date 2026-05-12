@@ -28,7 +28,8 @@ export function MetaApiConnect({ onData, onConnect, onSettingsChange, externalDa
   const { status: fbStatus, token, login, loginWithToken, logout } = useFacebookSDK();
 
   const [accounts, setAccounts] = useState<MetaAdAccount[]>([]);
-  const [selectedAccount, setSelectedAccount] = useState(() => loadSelectedAccount());
+  // Arranca vacío siempre; se restaura desde localStorage solo DESPUÉS de cargar las cuentas
+  const [selectedAccount, setSelectedAccount] = useState("");
   const [datePreset, setDatePreset] = useState<DatePreset>(externalDatePreset ?? "last_30d");
   const [level, setLevel] = useState<"campaign" | "adset" | "ad">(externalLevel ?? "campaign");
   const [loading, setLoading] = useState(false);
@@ -40,6 +41,8 @@ export function MetaApiConnect({ onData, onConnect, onSettingsChange, externalDa
 
   const onDataRef = useRef(onData);
   onDataRef.current = onData;
+  // Solo true después de que el usuario hizo clic en "Cargar campañas" al menos una vez
+  const hasLoadedOnce = useRef(false);
 
   const retry = useCallback(() => setRetryCount((n) => n + 1), []);
 
@@ -70,6 +73,7 @@ export function MetaApiConnect({ onData, onConnect, onSettingsChange, externalDa
   // Carga manual — solo se ejecuta al presionar "Cargar campañas"
   const loadCampaigns = () => {
     if (!token || !selectedAccount) return;
+    hasLoadedOnce.current = true;
     setLoading(true);
     setError("");
     fetchCampaignInsights(token, selectedAccount, datePreset, level)
@@ -83,9 +87,9 @@ export function MetaApiConnect({ onData, onConnect, onSettingsChange, externalDa
       .finally(() => setLoading(false));
   };
 
-  // Solo re-carga automática cuando cambia período/nivel si ya hay datos cargados (retryCount)
+  // Re-carga solo si el usuario YA cargó manualmente al menos una vez (retryCount > 0)
   useEffect(() => {
-    if (!token || !selectedAccount || retryCount === 0) return;
+    if (!token || !selectedAccount || retryCount === 0 || !hasLoadedOnce.current) return;
     loadCampaigns();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [retryCount]);
