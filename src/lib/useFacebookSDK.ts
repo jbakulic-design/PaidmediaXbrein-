@@ -83,7 +83,7 @@ export function useFacebookSDK() {
             setStatus("idle");
           }
         },
-        { scope: "ads_read,ads_management" }
+        { scope: "ads_read,ads_management,business_management" }
       );
     });
   };
