@@ -31,8 +31,8 @@ import { useAuth } from "@/lib/useAuth";
 import { computeAlerts } from "@/lib/alerts";
 import type { GitHubConfig } from "@/lib/githubStorage";
 import { nanoid } from "@/lib/utils";
-import { fetchCampaignInsights, type MetaAdAccount, type DatePreset } from "@/lib/metaApi";
-import { saveSelectedAccount, loadSelectedAccount } from "@/lib/useFacebookSDK";
+import { fetchCampaignInsights, fetchAdAccounts, type MetaAdAccount, type DatePreset } from "@/lib/metaApi";
+import { useFacebookSDK, saveSelectedAccount, loadSelectedAccount } from "@/lib/useFacebookSDK";
 import {
   DollarSign, TrendingUp, Users,
   MousePointerClick, ShoppingCart, Zap,
@@ -53,6 +53,9 @@ interface MetaConnection {
 export default function Dashboard() {
   const { authenticated, ready, login, logout } = useAuth();
 
+  // ── Auth Meta (elevado aquí para detectar token guardado desde el inicio) ──
+  const { status: fbStatus, token: fbToken, login: fbLogin, loginWithToken: fbLoginWithToken, logout: fbLogout } = useFacebookSDK();
+
   const [campaigns, setCampaigns] = useState<MetaCampaign[]>([]);
   const [labels, setLabels] = useState<MetaLabels>({});
   const [targets] = useState<MetaTargets>(DEFAULT_TARGETS);
@@ -71,14 +74,33 @@ export default function Dashboard() {
   const [metaDatePreset, setMetaDatePreset] = useState<DatePreset>("last_30d");
   const [metaLevel, setMetaLevel] = useState<"campaign" | "adset" | "ad">("campaign");
 
-  // Estado previo al primer load: token + cuentas + cuenta seleccionada
+  // Cuentas y cuenta seleccionada (disponibles antes del primer load)
   const [earlyToken, setEarlyToken] = useState<string | null>(null);
   const [earlyAccounts, setEarlyAccounts] = useState<MetaAdAccount[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState("");
 
-  // Evita re-fetch del mismo key y rastrear si se cargó al menos una vez
+  // Evita re-fetch del mismo key y rastrea si se cargó al menos una vez
   const lastFetchedKeyRef = useRef("");
   const hasLoadedRef = useRef(false);
+
+  // Cuando el token está disponible (incluido desde localStorage al inicio),
+  // carga las cuentas y las pone disponibles en el sidebar sin esperar ningún click
+  useEffect(() => {
+    if (!fbToken) {
+      setEarlyToken(null);
+      setEarlyAccounts([]);
+      return;
+    }
+    fetchAdAccounts(fbToken)
+      .then((accounts) => {
+        setEarlyToken(fbToken);
+        setEarlyAccounts(accounts);
+        const saved = loadSelectedAccount();
+        const exists = accounts.find((a) => a.id === saved);
+        setSelectedAccountId(exists ? saved : "");
+      })
+      .catch(() => {}); // silencioso — error se maneja al intentar cargar campañas
+  }, [fbToken]);
 
   const {
     workspaces, activeWorkspace, createWorkspace,
@@ -93,15 +115,19 @@ export default function Dashboard() {
     [campaigns, targets]
   );
 
-  /** Llamado por MetaApiConnect cuando el token está listo y las cuentas cargaron */
-  const handleMetaReady = useCallback((token: string, accounts: MetaAdAccount[]) => {
-    setEarlyToken(token);
-    setEarlyAccounts(accounts);
-    // Restaurar cuenta guardada si existe
-    const saved = loadSelectedAccount();
-    const exists = accounts.find((a) => a.id === saved);
-    setSelectedAccountId(exists ? saved : "");
-  }, []);
+  /** Logout completo: cierra sesión Meta y resetea todo el estado */
+  const handleMetaLogout = useCallback(() => {
+    fbLogout();
+    setEarlyToken(null);
+    setEarlyAccounts([]);
+    setSelectedAccountId("");
+    setMetaConnection(null);
+    setCampaigns([]);
+    setDataSource(null);
+    setSelectedSource(null);
+    hasLoadedRef.current = false;
+    lastFetchedKeyRef.current = "";
+  }, [fbLogout]);
 
   /** Ejecuta el fetch de campañas — solo se llama desde el botón del sidebar */
   const doFetchCampaigns = useCallback((
@@ -339,18 +365,11 @@ export default function Dashboard() {
                   {selectedSource === "meta" && (
                     <MetaApiConnect
                       standalone
-                      onReady={handleMetaReady}
-                      onDisconnect={() => {
-                        setEarlyToken(null);
-                        setEarlyAccounts([]);
-                        setSelectedAccountId("");
-                        setMetaConnection(null);
-                        setCampaigns([]);
-                        setDataSource(null);
-                        setSelectedSource(null);
-                        hasLoadedRef.current = false;
-                        lastFetchedKeyRef.current = "";
-                      }}
+                      fbStatus={fbStatus}
+                      token={fbToken}
+                      onLogin={fbLogin}
+                      onLoginWithToken={fbLoginWithToken}
+                      onLogout={handleMetaLogout}
                     />
                   )}
                   {selectedSource === "excel" && (
