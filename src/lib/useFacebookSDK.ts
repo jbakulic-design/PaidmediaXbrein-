@@ -72,13 +72,23 @@ export function useFacebookSDK() {
   const login = () => {
     setStatus("loading");
     loadSdk(() => {
+      // FB.login callback must be synchronous — handle async token exchange with .then()
       window.FB.login(
-        async (res) => {
+        (res) => {
           if (res.authResponse?.accessToken) {
-            const longToken = await exchangeForLongLived(res.authResponse.accessToken);
-            localStorage.setItem(TOKEN_KEY, longToken);
-            setToken(longToken);
-            setStatus("connected");
+            const shortToken = res.authResponse.accessToken;
+            exchangeForLongLived(shortToken)
+              .then((longToken) => {
+                localStorage.setItem(TOKEN_KEY, longToken);
+                setToken(longToken);
+                setStatus("connected");
+              })
+              .catch(() => {
+                // Fallback: use short token if exchange fails
+                localStorage.setItem(TOKEN_KEY, shortToken);
+                setToken(shortToken);
+                setStatus("connected");
+              });
           } else {
             setStatus("idle");
           }
