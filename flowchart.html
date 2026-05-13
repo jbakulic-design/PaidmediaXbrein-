@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Paid Media Analyzer — Diagrama de Funcionalidades</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; padding: 32px 24px; }
+
+    h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .subtitle { font-size: 13px; color: #64748b; margin-bottom: 32px; }
+
+    /* Legend */
+    .legend { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 32px; }
+    .legend-item { display: flex; align-items: center; gap-7px; gap: 7px; font-size: 12px; color: #94a3b8; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+    /* Flow grid */
+    .flow { display: flex; flex-direction: column; gap: 0; }
+
+    /* Layer */
+    .layer { display: flex; align-items: flex-start; gap: 0; }
+    .layer-label { writing-mode: vertical-lr; transform: rotate(180deg); font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #475569; padding: 12px 8px; min-width: 30px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .layer-content { flex: 1; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px 0; border-top: 1px solid #1e293b; }
+
+    /* Nodes */
+    .node {
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      position: relative;
+      cursor: default;
+      transition: transform 0.15s, box-shadow 0.15s;
+      line-height: 1.4;
+    }
+    .node:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+    .node .tag { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.7; display: block; margin-bottom: 2px; }
+    .node .desc { font-size: 10px; opacity: 0.6; margin-top: 3px; font-weight: 400; }
+
+    /* Node types */
+    .node-ok    { background: #0f2d1a; border: 1.5px solid #22c55e; color: #4ade80; }
+    .node-bug   { background: #2d1515; border: 1.5px solid #ef4444; color: #f87171; }
+    .node-warn  { background: #2d2415; border: 1.5px solid #f59e0b; color: #fbbf24; }
+    .node-miss  { background: #1a1a2d; border: 1.5px dashed #6366f1; color: #818cf8; }
+    .node-infra { background: #111827; border: 1.5px solid #374151; color: #9ca3af; }
+    .node-entry { background: #0c1d3d; border: 2px solid #3b82f6; color: #60a5fa; }
+
+    /* Arrows between layers */
+    .arrow-row { display: flex; align-items: center; padding-left: 38px; gap: 10px; min-height: 22px; }
+    .arrow { font-size: 16px; color: #334155; }
+    .arrow-line { flex: 1; height: 1px; background: #1e293b; }
+
+    /* Status bar */
+    .status-bar { display: flex; gap: 6px; margin-bottom: 28px; }
+    .stat { background: #1e293b; border-radius: 8px; padding: 10px 16px; font-size: 12px; color: #94a3b8; }
+    .stat strong { font-size: 20px; font-weight: 700; display: block; line-height: 1; margin-bottom: 2px; }
+    .stat.ok strong { color: #22c55e; }
+    .stat.bug strong { color: #ef4444; }
+    .stat.warn strong { color: #f59e0b; }
+    .stat.miss strong { color: #6366f1; }
+
+    /* Detail table */
+    .detail { margin-top: 36px; }
+    .detail h2 { font-size: 14px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { text-align: left; padding: 8px 12px; color: #64748b; font-weight: 600; border-bottom: 1px solid #1e293b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+    td { padding: 9px 12px; border-bottom: 1px solid #0f172a; vertical-align: top; color: #cbd5e1; }
+    tr:hover td { background: #0f172a; }
+    .badge { display: inline-block; border-radius: 4px; padding: 2px 6px; font-size: 10px; font-weight: 600; }
+    .b-ok   { background: #0f2d1a; color: #4ade80; }
+    .b-bug  { background: #2d1515; color: #f87171; }
+    .b-warn { background: #2d2415; color: #fbbf24; }
+    .b-miss { background: #1a1a2d; color: #818cf8; }
+    .b-out  { background: #1e293b; color: #64748b; }
+  </style>
+</head>
+<body>
+
+  <h1>🗺 Paid Media Analyzer — Mapa de Funcionalidades</h1>
+  <p class="subtitle">Diagrama de flujo completo · Estado actual de cada función</p>
+
+  <!-- Contadores -->
+  <div class="status-bar">
+    <div class="stat ok"><strong>10</strong>Funcionando</div>
+    <div class="stat bug"><strong>3</strong>Con bugs</div>
+    <div class="stat warn"><strong>4</strong>Parcial</div>
+    <div class="stat miss"><strong>5</strong>Faltante</div>
+  </div>
+
+  <!-- Leyenda -->
+  <div class="legend">
+    <div class="legend-item"><div class="dot" style="background:#22c55e"></div> Funciona correctamente</div>
+    <div class="legend-item"><div class="dot" style="background:#ef4444"></div> Tiene bug / broken</div>
+    <div class="legend-item"><div class="dot" style="background:#f59e0b"></div> Parcial / limitado</div>
+    <div class="legend-item"><div class="dot" style="background:#6366f1"></div> No existe aún</div>
+    <div class="legend-item"><div class="dot" style="background:#374151"></div> Infraestructura / soporte</div>
+  </div>
+
+  <!-- FLUJO -->
+  <div class="flow">
+
+    <!-- CAPA 1: ENTRADA -->
+    <div class="layer">
+      <div class="layer-label">Entrada</div>
+      <div class="layer-content">
+        <div class="node node-infra">
+          <span class="tag">Auth</span>
+          LoginGate
+          <span class="desc">Contraseña local · no es multi-user</span>
+        </div>
+        <div class="node node-ok">
+          <span class="tag">Workspace</span>
+          ClientSwitcher
+          <span class="desc">Múltiples clientes · en localStorage</span>
+        </div>
+        <div class="node node-infra">
+          <span class="tag">Tema</span>
+          ThemeToggle
+          <span class="desc">Dark / Light</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-row">
+      <div class="arrow">↓</div><div class="arrow-line"></div>
+    </div>
+
+    <!-- CAPA 2: FUENTE DE DATOS -->
+    <div class="layer">
+      <div class="layer-label">Fuente</div>
+      <div class="layer-content">
+        <div class="node node-ok">
+          <span class="tag">Meta API</span>
+          Conexión Facebook
+          <span class="desc">OAuth + token manual · long-lived token</span>
+        </div>
+        <div class="node node-ok">
+          <span class="tag">Meta API</span>
+          Cuentas Business Manager
+          <span class="desc">Directo + BMs · deduplicado</span>
+        </div>
+        <div class="node node-ok">
+          <span class="tag">Excel</span>
+          Subir .xlsx / .csv
+          <span class="desc">Parser columnas dinámico</span>
+        </div>
+        <div class="node node-miss">
+          <span class="tag">Faltante</span>
+          Múltiples cuentas
+          <span class="desc">Combinar 2+ cuentas en 1 análisis</span>
+        </div>
+        <div class="node node-miss">
+          <span class="tag">Faltante</span>
+          Rango de fechas custom
+          <span class="desc">Hoy solo hay presets (7d, 30d…)</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-row">
+      <div class="arrow">↓</div><div class="arrow-line"></div>
+    </div>
+
+    <!-- CAPA 3: CONTROLES SIDEBAR -->
+    <div class="layer">
+      <div class="layer-label">Controles</div>
+      <div class="layer-content">
+        <div class="node node-ok">
+          <span class="tag">Sidebar</span>
+          Selector de cuenta
+          <span class="desc">Búsqueda + orden alfabético</span>
+        </div>
+        <div class="node node-ok">
+          <span class="tag">Sidebar</span>
+          Período / Nivel
+          <span class="desc">Preset de fechas · campaña/adset/ad</span>
+        </div>
+        <div class="node node-ok">
+          <span class="tag">Sidebar</span>
+          Tipo de campaña
+          <span class="desc">Ecommerce · Leads · Mensajes</span>
+        </div>
+        <div class="node node-warn">
+          <span class="tag">Parcial</span>
+          Targets globales
+          <span class="desc">Fijos en código · no editables desde UI</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-row">
+      <div class="arrow">↓</div><div class="arrow-line"></div>
+    </div>
+
+    <!-- CAPA 4: MOTOR DE ANÁLISIS -->
+    <div class="layer">
+      <div class="layer-label">Motor</div>
+      <div class="layer-content">
+        <div class="node node-ok">
+          <span class="tag">decisions.ts</span>
+          Score 0-100
+          <span class="desc">ROAS · CPA · CTR · CPM · Frecuencia</span>
+        </div>
+        <div class="node node-ok">
+          <span class="tag">decisions.ts</span>
+          Decisión automática
+          <span class="desc">SCALE / MONITOR / OPTIMIZE / TEST / PAUSE</span>
+        </div>
+        <div class="node node-warn">
+          <span class="tag">Parcial</span>
+          Alertas por campaña
+          <span class="desc">Genera textos · pero coupling frágil con alerts.ts</span>
+        </div>
+        <div class="node node-warn">
+          <span class="tag">Parcial</span>
+          alerts.ts — Comparativo
+          <span class="desc">Compara reporte actual vs anterior · requiere 2+ reportes</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-row">
+      <div class="arrow">↓</div><div class="arrow-line"></div>
+    </div>
+
+    <!-- CAPA 5: VISUALIZACIÓN -->
+    <div class="layer">
+      <div class="layer-label">Análisis</div>
+      <div class="layer-content">
+        <div class="node node-ok">
+          <span class="tag">Tab: Tabla</span>
+          CampaignTable
+          <span class="desc">Sort · alertas · targets por campaña</span>
+        </div>
+        <div class="node node-ok">
+          <span class="tag">Tab: Gráficos</span>
+          PerformanceChart
+          <span class="desc">ROAS bar · CTR/CPM scatter · decisiones</span>
+        </div>
+        <div class="node node-ok">
+          <span class="tag">Tab: Gráficos</span>
+          CreativeFatigueChart
+          <span class="desc">Frecuencia vs CTR por campaña</span>
+        </div>
+        <div class="node node-ok">
+          <span class="tag">Tab: Comparar</span>
+          ComparePanel
+          <span class="desc">2-4 campañas lado a lado · best/worst</span>
+        </div>
+        <div class="node node-bug">
+          <span class="tag">Tab: Presupuesto 🐛</span>
+          BudgetProjection
+          <span class="desc">Bug: días del mes incorrecto en "este mes"</span>
+        </div>
+        <div class="node node-ok">
+          <span class="tag">Tab: Estructura</span>
+          StructureOverview
+          <span class="desc">Árbol campaña→adset→ad (solo Meta API)</span>
+        </div>
+        <div class="node node-warn">
+          <span class="tag">Parcial</span>
+          BenchmarksPanel
+          <span class="desc">Benchmarks estáticos · no customizables</span>
+        </div>
+        <div class="node node-miss">
+          <span class="tag">Faltante</span>
+          Tab: Tendencias
+          <span class="desc">Evolución temporal de métricas</span>
+        </div>
+        <div class="node node-miss">
+          <span class="tag">Faltante</span>
+          Exportar a PDF/Excel
+          <span class="desc">exportCsv.ts existe pero no hay botón</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-row">
+      <div class="arrow">↓</div><div class="arrow-line"></div>
+    </div>
+
+    <!-- CAPA 6: REPORTES -->
+    <div class="layer">
+      <div class="layer-label">Reportes</div>
+      <div class="layer-content">
+        <div class="node node-ok">
+          <span class="tag">Reportes</span>
+          Guardar snapshot
+          <span class="desc">Nombre · fecha · campañas + totales</span>
+        </div>
+        <div class="node node-ok">
+          <span class="tag">Reportes</span>
+          ReportsPanel
+          <span class="desc">Lista · eliminar · limpiar</span>
+        </div>
+        <div class="node node-warn">
+          <span class="tag">Parcial</span>
+          GitHub sync
+          <span class="desc">GitHubSettings · sync manual · no auto</span>
+        </div>
+        <div class="node node-bug">
+          <span class="tag">Bug</span>
+          Targets por campaña
+          <span class="desc">Se editan en UI pero no persisten al recargar</span>
+        </div>
+        <div class="node node-miss">
+          <span class="tag">Faltante</span>
+          Comparar 2 reportes
+          <span class="desc">Ver evolución entre períodos guardados</span>
+        </div>
+        <div class="node node-miss">
+          <span class="tag">Faltante</span>
+          Compartir reporte
+          <span class="desc">Link público o exportar a PDF para cliente</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /flow -->
+
+  <!-- TABLA DETALLE -->
+  <div class="detail">
+    <h2>Detalle por función</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Función</th>
+          <th>Archivo</th>
+          <th>Estado</th>
+          <th>Acción sugerida</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Login / Auth</td>
+          <td>useAuth.ts · LoginGate</td>
+          <td><span class="badge b-warn">Parcial</span></td>
+          <td>Es contraseña única hardcodeada. ¿Se necesita multi-usuario?</td>
+        </tr>
+        <tr>
+          <td>Conexión Meta API</td>
+          <td>useFacebookSDK.ts · MetaApiConnect</td>
+          <td><span class="badge b-ok">OK</span></td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>Business Manager accounts</td>
+          <td>metaApi.ts · fetchAdAccounts</td>
+          <td><span class="badge b-ok">OK</span></td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>Token long-lived (60 días)</td>
+          <td>api/refresh-token · useFacebookSDK</td>
+          <td><span class="badge b-ok">OK</span></td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>Selector rango fechas custom</td>
+          <td>metaApi.ts</td>
+          <td><span class="badge b-miss">Faltante</span></td>
+          <td>Agregar date picker "desde / hasta"</td>
+        </tr>
+        <tr>
+          <td>Combinar múltiples cuentas</td>
+          <td>—</td>
+          <td><span class="badge b-miss">Faltante</span></td>
+          <td>Útil para agencias — merge de datos</td>
+        </tr>
+        <tr>
+          <td>Score + Decisión automática</td>
+          <td>decisions.ts</td>
+          <td><span class="badge b-ok">OK</span></td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>Targets globales configurables</td>
+          <td>decisions.ts · TargetsPanel</td>
+          <td><span class="badge b-warn">Parcial</span></td>
+          <td>TargetsPanel.tsx existe pero no está conectado a la UI principal</td>
+        </tr>
+        <tr>
+          <td>Targets por campaña (override)</td>
+          <td>CampaignTable · decisions.ts</td>
+          <td><span class="badge b-bug">Bug</span></td>
+          <td>No persisten. Guardar en localStorage o reportes</td>
+        </tr>
+        <tr>
+          <td>Alertas comparativas</td>
+          <td>alerts.ts</td>
+          <td><span class="badge b-warn">Parcial</span></td>
+          <td>Requiere 2+ reportes guardados. Hacerlo visible en UI</td>
+        </tr>
+        <tr>
+          <td>Tabla de campañas</td>
+          <td>CampaignTable</td>
+          <td><span class="badge b-ok">OK</span></td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>Gráficos de performance</td>
+          <td>PerformanceChart</td>
+          <td><span class="badge b-ok">OK</span></td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>Fatiga creativa</td>
+          <td>CreativeFatigueChart</td>
+          <td><span class="badge b-ok">OK</span></td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>Comparar campañas</td>
+          <td>ComparePanel</td>
+          <td><span class="badge b-ok">OK</span></td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>Proyección de presupuesto</td>
+          <td>BudgetProjection</td>
+          <td><span class="badge b-bug">Bug</span></td>
+          <td>"Este mes" calcula mal los días transcurridos</td>
+        </tr>
+        <tr>
+          <td>Estimador presupuesto editable</td>
+          <td>BudgetProjection</td>
+          <td><span class="badge b-ok">OK</span></td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>Benchmarks de industria</td>
+          <td>BenchmarksPanel · benchmarks.ts</td>
+          <td><span class="badge b-warn">Parcial</span></td>
+          <td>Datos estáticos. ¿Se quiere editar los rangos?</td>
+        </tr>
+        <tr>
+          <td>Estructura cuenta (árbol)</td>
+          <td>StructureOverview</td>
+          <td><span class="badge b-ok">OK</span></td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>Exportar CSV</td>
+          <td>exportCsv.ts</td>
+          <td><span class="badge b-warn">Parcial</span></td>
+          <td>El archivo existe, pero no hay botón en la UI</td>
+        </tr>
+        <tr>
+          <td>Guardar reportes</td>
+          <td>useReports · ReportsPanel</td>
+          <td><span class="badge b-ok">OK</span></td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>Sync GitHub</td>
+          <td>githubStorage · GitHubSettings</td>
+          <td><span class="badge b-warn">Parcial</span></td>
+          <td>Funciona pero es manual. ¿Se necesita auto-sync?</td>
+        </tr>
+        <tr>
+          <td>Comparar reportes entre períodos</td>
+          <td>—</td>
+          <td><span class="badge b-miss">Faltante</span></td>
+          <td>Ver evolución semana a semana o mes a mes</td>
+        </tr>
+        <tr>
+          <td>Exportar / compartir a cliente</td>
+          <td>generateReport.ts</td>
+          <td><span class="badge b-miss">Faltante</span></td>
+          <td>generateReport.ts existe — conectar a botón "Exportar PDF"</td>
+        </tr>
+        <tr>
+          <td>Tendencias temporales (gráfico)</td>
+          <td>TrendChart (parcial)</td>
+          <td><span class="badge b-miss">Faltante</span></td>
+          <td>TrendChart existe pero solo dentro de reportes, no en análisis</td>
+        </tr>
+        <tr>
+          <td>Alertas en tiempo real (campana)</td>
+          <td>AlertsBell</td>
+          <td><span class="badge b-warn">Parcial</span></td>
+          <td>Solo muestra alertas de reportes guardados, no del análisis actual</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</body>
+</html>

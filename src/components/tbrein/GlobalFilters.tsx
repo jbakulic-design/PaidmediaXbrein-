@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Calendar, ChevronDown, ToggleLeft, ToggleRight, Search } from "lucide-react";
+import { Calendar, ChevronDown, Search } from "lucide-react";
 import type { MetaAdAccount } from "@/lib/metaApi";
 import type { DateRange, SeguimientoPreset } from "@/lib/seguimientoApi";
 import { SEGUIMIENTO_PRESET_LABELS, presetToRange } from "@/lib/seguimientoApi";
@@ -197,10 +197,15 @@ export function GlobalFilters({
           onClick={() => onCompareToggle(!compareEnabled)}
           className="flex items-center gap-2 text-xs font-medium transition hover:opacity-80"
         >
-          {compareEnabled
-            ? <ToggleRight className="w-5 h-5 text-blue-400 shrink-0" />
-            : <ToggleLeft className="w-5 h-5 shrink-0" style={{ color: "var(--muted-foreground)" }} />
-          }
+          <span
+            className="w-8 h-4 rounded-full flex items-center px-0.5 transition-colors shrink-0"
+            style={{ background: compareEnabled ? "#3b82f6" : "var(--border)" }}
+          >
+            <span
+              className="w-3 h-3 rounded-full bg-white transition-transform"
+              style={{ transform: compareEnabled ? "translateX(16px)" : "translateX(0)" }}
+            />
+          </span>
           <span style={{ color: compareEnabled ? undefined : "var(--muted-foreground)" }}>
             Período anterior
           </span>

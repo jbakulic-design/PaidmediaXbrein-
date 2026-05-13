@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Loader2, ShoppingCart, Users, MessageCircle, AlertTriangle } from "lucide-react";
+import { Loader2, ShoppingCart, Users, MessageCircle, Zap } from "lucide-react";
 import type { MetaAdAccount } from "@/lib/metaApi";
 import type { SeguimientoPayload, DateRange, SeguimientoPreset } from "@/lib/seguimientoApi";
 import {
@@ -110,7 +110,7 @@ export function TbreinDashboard({ token, accounts, defaultAccountId }: Props) {
   if (!token) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
-        <AlertTriangle className="w-8 h-8 text-amber-400" />
+        <Zap className="w-8 h-8 text-amber-400" />
         <p className="text-sm font-semibold">Conectá tu cuenta de Meta primero</p>
         <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
           Usá el panel de la izquierda para conectarte con Meta API.
@@ -183,7 +183,7 @@ export function TbreinDashboard({ token, accounts, defaultAccountId }: Props) {
           className="rounded-xl border px-4 py-3 text-sm flex items-center gap-2 text-red-400"
           style={{ borderColor: "var(--border)", background: "var(--card)" }}
         >
-          <AlertTriangle className="w-4 h-4 shrink-0" />
+          <Zap className="w-4 h-4 shrink-0" />
           <span>{error}</span>
           <button
             onClick={() => {

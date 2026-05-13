@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<title>Paid Media — Flowchart</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#0d1117;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow:auto;}
+#bar{
+  position:sticky;top:0;z-index:100;
+  background:rgba(9,11,18,0.97);border-bottom:1px solid #1f2937;
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:9px 24px;
+}
+#bar h1{font-size:13px;font-weight:700;color:#f1f5f9;}
+.sep{width:1px;height:18px;background:#1f2937;}
+.leg{display:flex;align-items:center;gap:5px;font-size:11px;color:#6b7280;}
+.dot{width:9px;height:9px;border-radius:50%;}
+.dot-miss{width:9px;height:9px;border-radius:50%;border:2px dashed #7c3aed;background:transparent;}
+#hint{margin-left:auto;font-size:10px;color:#374151;}
+#wrap{overflow:auto;width:100vw;height:calc(100vh - 44px);cursor:grab;}
+#wrap:active{cursor:grabbing;}
+#zoom-btns{position:fixed;bottom:16px;right:16px;display:flex;gap:6px;z-index:200;}
+#zoom-btns button{
+  width:32px;height:32px;border-radius:7px;border:1px solid #1f2937;
+  background:#0d1117;color:#9ca3af;font-size:15px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+#zoom-btns button:hover{background:#1f2937;color:#f1f5f9;}
+#zoom-lbl{display:flex;align-items:center;padding:0 8px;font-size:10px;color:#6b7280;
+  background:#0d1117;border:1px solid #1f2937;border-radius:7px;min-width:42px;justify-content:center;}
+</style>
+</head>
+<body>
+
+<div id="bar">
+  <h1>⚡ Paid Media Analyzer — Diagrama de funcionalidades</h1>
+  <div class="sep"></div>
+  <div class="leg"><div class="dot" style="background:#16a34a"></div>Funciona bien</div>
+  <div class="leg"><div class="dot" style="background:#dc2626"></div>Tiene bug</div>
+  <div class="leg"><div class="dot" style="background:#d97706"></div>Parcial / limitado</div>
+  <div class="leg"><div class="dot-miss"></div>No existe aún</div>
+  <div class="leg"><div class="dot" style="background:#475569"></div>Infraestructura</div>
+  <div id="hint">Ctrl+Scroll = zoom · Arrastrar = mover</div>
+</div>
+
+<div id="wrap">
+  <svg id="diagram"></svg>
+</div>
+
+<div id="zoom-btns">
+  <button onclick="zm(0.1)">+</button>
+  <div id="zoom-lbl">100%</div>
+  <button onclick="zm(-0.1)">−</button>
+  <button onclick="zr()" style="font-size:10px;width:auto;padding:0 8px;">⌂</button>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════
+const STATUS = {
+  ok:   { fill:'#041209', stroke:'#16a34a', text:'#4ade80', badge:'✓ OK' },
+  bug:  { fill:'#140606', stroke:'#dc2626', text:'#f87171', badge:'🐛 Bug' },
+  warn: { fill:'#130e03', stroke:'#d97706', text:'#fbbf24', badge:'⚠ Parcial' },
+  miss: { fill:'#0b0717', stroke:'#6d28d9', text:'#a78bfa', badge:'✕ Faltante', dash:'7,4' },
+  infra:{ fill:'#0a0d14', stroke:'#374151', text:'#9ca3af', badge:'· Infra' },
+};
+
+const SECTIONS = [
+  {
+    id:'entry', label:'① ENTRADA', bg:'#0c1222', border:'#1e3a5f', textCol:'#60a5fa',
+    nodes:[
+      { id:'user',  label:'👤 Usuario',      sub:'Punto de entrada',         status:'infra' },
+      { id:'login', label:'🔐 Login',         sub:'Contraseña local única',   status:'warn'  },
+      { id:'ws',    label:'📁 Workspace',     sub:'Múltiples clientes (localStorage)', status:'ok' },
+    ]
+  },
+  {
+    id:'source', label:'② FUENTE DE DATOS', bg:'#070f09', border:'#1a3324', textCol:'#4ade80',
+    nodes:[
+      { id:'fb',       label:'🔵 Facebook OAuth',  sub:'Login con FB SDK',       status:'ok'   },
+      { id:'tkmanual', label:'🔑 Token Manual',     sub:'Pegar token manualmente', status:'ok'  },
+      { id:'tklong',   label:'⏱ Token 60 días',    sub:'Long-lived via servidor', status:'ok'  },
+      { id:'bm',       label:'🏢 Business Manager', sub:'BM + cuentas directas',  status:'ok'  },
+      { id:'excel',    label:'📊 Excel / CSV',      sub:'Export de Ads Manager',  status:'ok'   },
+      { id:'daterange',label:'📅 Fechas custom',    sub:'Date picker personalizado', status:'miss'},
+      { id:'multiacc', label:'🔀 Multi-cuenta',     sub:'Combinar 2+ cuentas',    status:'miss' },
+    ]
+  },
+  {
+    id:'controls', label:'③ CONTROLES · Sidebar izquierdo', bg:'#0b0918', border:'#2d1f50', textCol:'#a78bfa',
+    nodes:[
+      { id:'saccount', label:'🏪 Cuenta pub.',   sub:'Buscador + alfabético',     status:'ok'   },
+      { id:'speriod',  label:'📆 Período',        sub:'Solo presets (sin custom)', status:'warn' },
+      { id:'slevel',   label:'🔢 Nivel',           sub:'Campaña / AdSet / Ad',     status:'ok'   },
+      { id:'stype',    label:'🛍 Tipo campaña',    sub:'Ecomm · Leads · Mensajes', status:'ok'   },
+      { id:'stargets', label:'⚙ Targets globales',sub:'Hardcodeados, no editables',status:'warn' },
+    ]
+  },
+  {
+    id:'engine', label:'④ MOTOR DE ANÁLISIS · decisions.ts + alerts.ts', bg:'#060f07', border:'#1a3010', textCol:'#86efac',
+    nodes:[
+      { id:'score',    label:'🧮 Score 0–100',        sub:'ROAS+CPA+CTR+Freq+CPM',   status:'ok'   },
+      { id:'decision', label:'🎯 Decisión automática', sub:'SCALE/MONITOR/OPTIMIZE/TEST/PAUSE', status:'ok' },
+      { id:'alertsc',  label:'⚠ Alertas campaña',     sub:'Textos por umbral (frágil)', status:'warn'},
+      { id:'alertsr',  label:'⚠ Alertas comparativas',sub:'Requiere 2+ reportes guardados', status:'warn'},
+    ]
+  },
+  {
+    id:'viz', label:'⑤ VISUALIZACIÓN · Tabs de análisis', bg:'#060c10', border:'#0f2535', textCol:'#38bdf8',
+    nodes:[
+      { id:'ttable',   label:'📋 Tabla',         sub:'Sort · alertas · targets', status:'ok'   },
+      { id:'tcharts',  label:'📈 Gráficos',       sub:'ROAS · CTR/CPM · Decisiones', status:'ok'},
+      { id:'tfatigue', label:'😴 Fatiga creativa',sub:'Frecuencia vs CTR',       status:'ok'   },
+      { id:'tcompare', label:'⚖ Comparar',        sub:'2-4 camps. lado a lado',  status:'ok'   },
+      { id:'tbudget',  label:'💰 Presupuesto',     sub:'Bug: días del mes mal',   status:'bug'  },
+      { id:'tstruct',  label:'🌳 Estructura',      sub:'Árbol camp→adset→ad',     status:'ok'   },
+      { id:'tbench',   label:'📊 Benchmarks',      sub:'vs industria (estático)', status:'warn' },
+      { id:'ttargets', label:'🎯 Targets/camp.',   sub:'No persisten al recargar',status:'bug'  },
+      { id:'ttrends',  label:'📉 Tendencias',      sub:'Evolución temporal',      status:'miss' },
+    ]
+  },
+  {
+    id:'reports', label:'⑥ REPORTES Y EXPORTACIÓN', bg:'#0d0508', border:'#350f1e', textCol:'#f9a8d4',
+    nodes:[
+      { id:'rsave',    label:'💾 Guardar snapshot', sub:'Nombre · fecha · totales', status:'ok'   },
+      { id:'rpanel',   label:'📋 Panel reportes',   sub:'Lista · eliminar · limpiar', status:'ok' },
+      { id:'rbell',    label:'🔔 Campana alertas',  sub:'Solo de reportes guardados', status:'warn'},
+      { id:'rgithub',  label:'🐙 GitHub sync',      sub:'Backup manual',             status:'warn' },
+      { id:'rcsv',     label:'📄 Exportar CSV',      sub:'Código listo, sin botón UI',status:'warn' },
+      { id:'rpdf',     label:'📑 Exportar PDF',      sub:'generateReport.ts sin conectar', status:'miss'},
+      { id:'rshare',   label:'🔗 Compartir cliente', sub:'Link o PDF al cliente',    status:'miss' },
+      { id:'rperiods', label:'📊 Comparar períodos', sub:'Semana a semana',           status:'miss' },
+    ]
+  },
+];
+
+// Connections: { from, to, color, dash }
+const CONNECTIONS = [
+  // Entry internal
+  { from:'user',    to:'login',    color:'#3b82f6' },
+  { from:'user',    to:'ws',       color:'#3b82f6' },
+  // Login → Source
+  { from:'login',   to:'fb',       color:'#2563eb' },
+  { from:'login',   to:'tkmanual', color:'#2563eb' },
+  { from:'login',   to:'excel',    color:'#2563eb' },
+  // Meta chain (within source)
+  { from:'fb',      to:'tklong',   color:'#22c55e' },
+  { from:'tkmanual',to:'tklong',   color:'#22c55e' },
+  { from:'tklong',  to:'bm',       color:'#22c55e' },
+  // Source → Controls
+  { from:'bm',      to:'saccount', color:'#22c55e' },
+  { from:'excel',   to:'stype',    color:'#22c55e' },
+  { from:'ws',      to:'saccount', color:'#8b5cf6', dash:'5,3' }, // skip
+  // Controls → Engine
+  { from:'saccount',to:'score',    color:'#60a5fa' },
+  { from:'speriod', to:'score',    color:'#60a5fa' },
+  { from:'slevel',  to:'score',    color:'#60a5fa' },
+  { from:'stype',   to:'score',    color:'#60a5fa' },
+  { from:'stargets',to:'score',    color:'#f59e0b', dash:'5,3' },
+  // Engine internal
+  { from:'score',   to:'decision', color:'#4ade80' },
+  { from:'score',   to:'alertsc',  color:'#fbbf24' },
+  // Engine → Viz
+  { from:'decision',to:'ttable',   color:'#4ade80' },
+  { from:'decision',to:'tcharts',  color:'#4ade80' },
+  { from:'decision',to:'tcompare', color:'#4ade80' },
+  { from:'score',   to:'tfatigue', color:'#4ade80' },
+  { from:'score',   to:'tbudget',  color:'#fbbf24' },
+  { from:'score',   to:'tstruct',  color:'#4ade80' },
+  { from:'score',   to:'tbench',   color:'#4ade80' },
+  { from:'alertsc', to:'ttable',   color:'#f59e0b', dash:'4,3' },
+  // Viz → Reports
+  { from:'ttable',  to:'rsave',    color:'#38bdf8' },
+  { from:'tcharts', to:'rsave',    color:'#38bdf8' },
+  // Reports internal
+  { from:'rsave',   to:'rpanel',   color:'#f9a8d4' },
+  { from:'rsave',   to:'rbell',    color:'#f9a8d4' },
+  { from:'alertsr', to:'rbell',    color:'#f59e0b', dash:'5,3' },
+  { from:'rpanel',  to:'rgithub',  color:'#fbbf24', dash:'4,3' },
+  { from:'rpanel',  to:'rcsv',     color:'#fbbf24', dash:'4,3' },
+  { from:'rpanel',  to:'rpdf',     color:'#7c3aed', dash:'6,3' },
+  { from:'rpanel',  to:'rshare',   color:'#7c3aed', dash:'6,3' },
+  { from:'rpanel',  to:'rperiods', color:'#7c3aed', dash:'6,3' },
+];
+
+// ═══════════════════════════════════════════════════
+// LAYOUT CONSTANTS
+// ═══════════════════════════════════════════════════
+const CANVAS_W   = 1620;
+const NODE_W     = 148;
+const NODE_H     = 68;
+const NODE_R     = 9;          // corner radius
+const SEC_HDR_H  = 34;
+const SEC_PAD_X  = 20;
+const SEC_PAD_Y  = 14;
+const SEC_GAP    = 56;         // vertical gap between sections (routing channel)
+const MARGIN_X   = 30;
+const MARGIN_Y   = 32;
+
+// ═══════════════════════════════════════════════════
+// COMPUTE POSITIONS
+// ═══════════════════════════════════════════════════
+const nodeMap = {};   // id → {cx, cy, x, y, w, h, section_bottom_y, section_top_y, gutter_below, gutter_above}
+const secMap  = {};   // id → section info
+
+let curY = MARGIN_Y;
+
+SECTIONS.forEach((sec, si) => {
+  const count    = sec.nodes.length;
+  const secW     = CANVAS_W - MARGIN_X*2;
+  const totalNW  = count * NODE_W + (count-1) * 12;
+  const startX   = MARGIN_X + (secW - totalNW) / 2;
+  const secTop   = curY;
+  const nodesY   = curY + SEC_HDR_H + SEC_PAD_Y;
+  const secBot   = nodesY + NODE_H + SEC_PAD_Y;
+
+  secMap[sec.id] = { ...sec, x: MARGIN_X, y: secTop, w: secW, top: secTop, bottom: secBot };
+
+  sec.nodes.forEach((node, ni) => {
+    const nx = startX + ni * (NODE_W + 12);
+    const ny = nodesY;
+    nodeMap[node.id] = {
+      ...node,
+      x: nx, y: ny,
+      cx: nx + NODE_W/2,
+      cy: ny + NODE_H/2,
+      bottom: ny + NODE_H,
+      top: ny,
+      left: nx,
+      right: nx + NODE_W,
+      sectionIdx: si,
+    };
+  });
+
+  curY = secBot + SEC_GAP;
+});
+
+const TOTAL_H = curY + MARGIN_Y;
+
+// ═══════════════════════════════════════════════════
+// ROUTING HELPERS
+// ═══════════════════════════════════════════════════
+function gutterY(sectionIdx) {
+  // midpoint of gap below section sectionIdx
+  const sec = SECTIONS[sectionIdx];
+  const bottom = secMap[sec.id].bottom;
+  return bottom + SEC_GAP / 2;
+}
+
+function routeConnection(fromId, toId) {
+  const A = nodeMap[fromId];
+  const B = nodeMap[toId];
+  if (!A || !B) return null;
+
+  const ax = A.cx, ay = A.cy;
+  const bx = B.cx, by = B.cy;
+  const si = A.sectionIdx;
+  const ti = B.sectionIdx;
+
+  if (si === ti) {
+    // Same section: horizontal route along top or bottom
+    const ry = Math.min(A.y, B.y) - 10; // route above both nodes
+    if (ax < bx) {
+      return [[A.right,   A.cy],
+              [A.right+8, A.cy],
+              [A.right+8, ry],
+              [B.left-8,  ry],
+              [B.left-8,  B.cy],
+              [B.left,    B.cy]];
+    } else {
+      return [[A.left,   A.cy],
+              [A.left-8, A.cy],
+              [A.left-8, ry],
+              [B.right+8,ry],
+              [B.right+8,B.cy],
+              [B.right,  B.cy]];
+    }
+  }
+
+  if (ti > si) {
+    // Downward connection
+    // Use multiple gutters if skipping sections
+    const gY = gutterY(si === 0 && ti > 1 ? ti-1 : si);
+    if (ax === bx) {
+      return [[ax, A.bottom], [bx, B.top]];
+    }
+    return [
+      [ax, A.bottom],
+      [ax, gY],
+      [bx, gY],
+      [bx, B.top],
+    ];
+  } else {
+    // Upward — route along right margin
+    const rx = CANVAS_W - MARGIN_X + 20;
+    return [
+      [A.right, A.cy],
+      [rx, A.cy],
+      [rx, B.cy],
+      [B.right, B.cy],
+    ];
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// SVG RENDERING
+// ═══════════════════════════════════════════════════
+function svgEl(tag, attrs, children) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = document.createElementNS(NS, tag);
+  Object.entries(attrs).forEach(([k,v]) => el.setAttribute(k,v));
+  if (children) children.forEach(c => c && el.appendChild(c));
+  return el;
+}
+
+function buildSVG() {
+  const svg = document.getElementById('diagram');
+  svg.innerHTML = '';
+  svg.setAttribute('width',  CANVAS_W);
+  svg.setAttribute('height', TOTAL_H);
+  svg.setAttribute('viewBox', `0 0 ${CANVAS_W} ${TOTAL_H}`);
+
+  // ── Defs: arrowheads ──
+  const defs = svgEl('defs', {});
+  const arrowCols = [...new Set(CONNECTIONS.map(c=>c.color))];
+  arrowCols.forEach(col => {
+    const id = 'arr-' + col.replace('#','');
+    const marker = svgEl('marker', {
+      id, markerWidth:'8', markerHeight:'8',
+      refX:'7', refY:'4', orient:'auto', markerUnits:'strokeWidth'
+    });
+    marker.appendChild(svgEl('polygon', {
+      points:'0 0, 8 4, 0 8', fill: col
+    }));
+    defs.appendChild(marker);
+  });
+  svg.appendChild(defs);
+
+  // ── Section backgrounds ──
+  SECTIONS.forEach(sec => {
+    const s = secMap[sec.id];
+    svg.appendChild(svgEl('rect', {
+      x:s.x, y:s.y, width:s.w, height:s.bottom-s.y,
+      rx:12, fill:sec.bg, stroke:sec.border, 'stroke-width':'1',
+    }));
+    // Section label
+    const lbl = svgEl('text', {
+      x: s.x + 18, y: s.y + 22,
+      fill: sec.textCol,
+      'font-size':'11', 'font-weight':'700',
+      'font-family':'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',
+      'letter-spacing':'0.08em',
+    });
+    lbl.textContent = sec.label.toUpperCase();
+    svg.appendChild(lbl);
+  });
+
+  // ── Connections ──
+  CONNECTIONS.forEach(conn => {
+    const pts = routeConnection(conn.from, conn.to);
+    if (!pts) return;
+    const pStr = pts.map(p=>p.join(',')).join(' ');
+    const arrowId = 'arr-' + conn.color.replace('#','');
+    svg.appendChild(svgEl('polyline', {
+      points: pStr,
+      fill: 'none',
+      stroke: conn.color,
+      'stroke-width': '1.6',
+      'stroke-opacity': '0.65',
+      'stroke-dasharray': conn.dash || 'none',
+      'marker-end': `url(#${arrowId})`,
+    }));
+  });
+
+  // ── Nodes ──
+  SECTIONS.forEach(sec => {
+    sec.nodes.forEach(node => {
+      const n = nodeMap[node.id];
+      const s = STATUS[node.status];
+      const g = svgEl('g', { class:'node', style:'cursor:default' });
+
+      // Background rect
+      const isDash = node.status === 'miss';
+      g.appendChild(svgEl('rect', {
+        x:n.x, y:n.y, width:NODE_W, height:NODE_H,
+        rx:NODE_R,
+        fill:s.fill,
+        stroke:s.stroke,
+        'stroke-width': isDash ? '1.5' : '1.5',
+        'stroke-dasharray': isDash ? '6,3' : 'none',
+      }));
+
+      // Node label (main text)
+      const txt = svgEl('text', {
+        x: n.cx, y: n.y + 26,
+        fill: s.text,
+        'font-size':'11.5', 'font-weight':'600',
+        'text-anchor':'middle',
+        'font-family':'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',
+      });
+      txt.textContent = node.label;
+      g.appendChild(txt);
+
+      // Sub text
+      const sub = svgEl('text', {
+        x: n.cx, y: n.y + 42,
+        fill: s.text,
+        'font-size':'9.5',
+        'font-weight':'400',
+        'text-anchor':'middle',
+        'font-family':'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',
+        opacity:'0.55',
+      });
+      sub.textContent = node.sub;
+      g.appendChild(sub);
+
+      // Badge
+      const badgeW = 66, badgeH = 14;
+      const bx = n.cx - badgeW/2;
+      const by = n.y + NODE_H - badgeH - 6;
+      g.appendChild(svgEl('rect', {
+        x:bx, y:by, width:badgeW, height:badgeH,
+        rx:3, fill:s.fill, stroke:s.stroke, 'stroke-width':'1',
+        'stroke-dasharray': isDash ? '4,2' : 'none',
+      }));
+      const bTxt = svgEl('text', {
+        x:n.cx, y:by+10,
+        fill:s.text,
+        'font-size':'8.5','font-weight':'700',
+        'text-anchor':'middle',
+        'font-family':'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',
+        'letter-spacing':'0.04em',
+      });
+      bTxt.textContent = s.badge;
+      g.appendChild(bTxt);
+
+      svg.appendChild(g);
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// ZOOM + PAN
+// ═══════════════════════════════════════════════════
+let scale = 1, tx = 0, ty = 0;
+let dragging = false, lastX = 0, lastY = 0;
+const wrap = document.getElementById('wrap');
+
+function applyTransform() {
+  const svg = document.getElementById('diagram');
+  svg.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
+  svg.style.transformOrigin = '0 0';
+  document.getElementById('zoom-lbl').textContent = Math.round(scale*100)+'%';
+}
+
+function zm(d) { scale = Math.min(Math.max(scale+d, 0.2), 2.5); applyTransform(); }
+function zr() {
+  const vw = wrap.clientWidth;
+  const vh = wrap.clientHeight;
+  scale = Math.min(vw / CANVAS_W, (vh) / TOTAL_H, 0.9);
+  tx = (vw - CANVAS_W * scale) / 2;
+  ty = 20;
+  applyTransform();
+}
+
+wrap.addEventListener('wheel', e => {
+  if(e.ctrlKey){ e.preventDefault(); zm(e.deltaY<0?0.08:-0.08); }
+}, {passive:false});
+
+wrap.addEventListener('mousedown', e => { dragging=true; lastX=e.clientX; lastY=e.clientY; });
+wrap.addEventListener('mousemove', e => {
+  if(!dragging) return;
+  tx += e.clientX-lastX; ty += e.clientY-lastY;
+  lastX=e.clientX; lastY=e.clientY;
+  applyTransform();
+});
+wrap.addEventListener('mouseup',   () => dragging=false);
+wrap.addEventListener('mouseleave',() => dragging=false);
+
+window.addEventListener('load', () => {
+  buildSVG();
+  setTimeout(zr, 50);
+});
+</script>
+</body>
+</html>

@@ -4,7 +4,7 @@ import {
   BarChart3, BookMarked, Table2, LineChart, Layers,
   ChevronRight, Menu, X, Zap, ShoppingCart, Users, MessageCircle,
   LogOut, ChevronDown, Columns2, Loader2, CalendarDays, Search, RefreshCw,
-  Activity,
+  TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -280,7 +280,7 @@ function NavContent(props: SidebarProps & { onClose?: () => void }) {
           )}
           style={mainTab !== "seguimiento" ? { color: "var(--foreground)" } : undefined}
         >
-          <Activity className="w-4 h-4 shrink-0" />
+          <TrendingUp className="w-4 h-4 shrink-0" />
           Seguimiento
           <span className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
             TBREIN

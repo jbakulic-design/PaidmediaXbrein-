@@ -1,6 +1,6 @@
 "use client";
 
-import { DollarSign, MessageCircle, MousePointerClick, BarChart2, Activity } from "lucide-react";
+import { DollarSign, MessageCircle, MousePointerClick, LineChart, Zap } from "lucide-react";
 import type { SeguimientoPayload, SeguimientoRow } from "@/lib/seguimientoApi";
 import {
   isMessagesObjective,
@@ -105,7 +105,7 @@ export function ConversationsPage({ data, prevData, compareEnabled }: Props) {
       value:          formatCompact(impressions),
       delta:          dp(impressions, pImpressions, compareEnabled),
       prevLabel:      prevLbl(pImpressions, formatCompact, compareEnabled),
-      icon:           <BarChart2 className="w-3.5 h-3.5" />,
+      icon:           <LineChart className="w-3.5 h-3.5" />,
       higherIsBetter: true,
     },
     {
@@ -113,7 +113,7 @@ export function ConversationsPage({ data, prevData, compareEnabled }: Props) {
       value:          frequency > 0 ? frequency.toFixed(2) : "—",
       delta:          frequency > 0 ? dp(frequency, pFrequency, compareEnabled) : null,
       prevLabel:      prevLbl(pFrequency, (v) => v.toFixed(2), compareEnabled),
-      icon:           <Activity className="w-3.5 h-3.5" />,
+      icon:           <Zap className="w-3.5 h-3.5" />,
       higherIsBetter: false,
     },
   ];
@@ -156,7 +156,7 @@ export function ConversationsPage({ data, prevData, compareEnabled }: Props) {
           className="rounded-xl border px-4 py-3 text-xs flex items-center gap-2"
           style={{ borderColor: "var(--border)", background: "var(--accent)", color: "var(--muted-foreground)" }}
         >
-          <Activity className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+          <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
           Las campañas no tienen objetivo de mensajes clasificado — se muestran todas las campañas.
           Para filtrado preciso, verificá los objetivos en tu cuenta de Ads Manager.
         </div>
