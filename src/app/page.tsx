@@ -24,6 +24,7 @@ import { ComparePanel } from "@/components/ComparePanel";
 import { BudgetProjection } from "@/components/BudgetProjection";
 import { SpendChart } from "@/components/SpendChart";
 import { Sidebar, type CampaignType, type MainTab, type AnalysisTab, CAMPAIGN_TYPE_CONFIG } from "@/components/Sidebar";
+import { TbreinDashboard } from "@/components/tbrein/TbreinDashboard";
 import { LoginGate } from "@/components/LoginGate";
 import { useReports } from "@/lib/useReports";
 import { useWorkspace } from "@/lib/useWorkspace";
@@ -509,6 +510,15 @@ export default function Dashboard() {
               <GitHubSettings onConfigChange={setGithubConfig} />
               <ReportsPanel reports={reports} onDelete={remove} onClear={clear} />
             </div>
+          )}
+
+          {/* ── SEGUIMIENTO TBREIN ── */}
+          {mainTab === "seguimiento" && (
+            <TbreinDashboard
+              token={earlyToken ?? ""}
+              accounts={earlyAccounts}
+              defaultAccountId={selectedAccountId || undefined}
+            />
           )}
         </main>
       </div>

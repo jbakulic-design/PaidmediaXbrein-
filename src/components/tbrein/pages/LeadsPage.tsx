@@ -1,0 +1,242 @@
+"use client";
+
+import { DollarSign, Users, MousePointerClick, BarChart2, Activity } from "lucide-react";
+import type { SeguimientoPayload, SeguimientoRow } from "@/lib/seguimientoApi";
+import {
+  isLeadObjective,
+  aggSpend, aggLeads, aggCPL, aggCTR,
+  aggImpressions, aggFrequency, aggClicks,
+  deltaPct,
+} from "@/lib/seguimientoApi";
+import { KPIGrid, type KPIDef } from "../scorecards/KPIGrid";
+import { MetricTimeline } from "../charts/MetricTimeline";
+import { SeguimientoTable } from "../tables/CampaignTable";
+import { formatCurrencyCompact, formatCompact, formatPercent } from "@/lib/utils";
+
+interface Props {
+  data:           SeguimientoPayload;
+  prevData?:      SeguimientoPayload | null;
+  compareEnabled: boolean;
+}
+
+/** Filter rows to lead-objective campaigns only */
+function filterLeads(rows: SeguimientoRow[]): SeguimientoRow[] {
+  const filtered = rows.filter((r) => isLeadObjective(r.objective));
+  // Fallback: if no campaign has an objective tag (data gap), show all
+  return filtered.length > 0 ? filtered : rows;
+}
+
+function dp(curr: number, prev: number | undefined, enabled: boolean) {
+  if (!enabled || prev === undefined) return null;
+  return deltaPct(curr, prev);
+}
+
+function prevLbl(
+  prev: number | undefined,
+  fmt: (v: number) => string,
+  enabled: boolean
+): string | undefined {
+  if (!enabled || prev === undefined || prev === 0) return undefined;
+  return `Anterior: ${fmt(prev)}`;
+}
+
+export function LeadsPage({ data, prevData, compareEnabled }: Props) {
+  // Filter all data arrays to leads only
+  const c  = filterLeads(data.campaigns);
+  const as = filterLeads(data.adsets);
+  const ts = filterLeads(data.timeSeries);
+  const p  = prevData ? filterLeads(prevData.campaigns) : undefined;
+
+  const noLeadObjectives = data.campaigns.length > 0 && c.length === data.campaigns.length;
+
+  // ── Totals ──────────────────────────────────────────────────────────────
+  const spend       = aggSpend(c);
+  const leads       = aggLeads(c);
+  const cpl         = aggCPL(c);
+  const ctr         = aggCTR(c);
+  const impressions = aggImpressions(c);
+  const frequency   = aggFrequency(c);
+
+  const pSpend       = p ? aggSpend(p) : undefined;
+  const pLeads       = p ? aggLeads(p) : undefined;
+  const pCpl         = p ? aggCPL(p) : undefined;
+  const pCtr         = p ? aggCTR(p) : undefined;
+  const pImpressions = p ? aggImpressions(p) : undefined;
+  const pFrequency   = p ? aggFrequency(p) : undefined;
+
+  // ── Top 6 KPI grid ───────────────────────────────────────────────────────
+  const topKpis: KPIDef[] = [
+    {
+      label:          "Gasto total",
+      value:          formatCurrencyCompact(spend),
+      delta:          dp(spend, pSpend, compareEnabled),
+      prevLabel:      prevLbl(pSpend, formatCurrencyCompact, compareEnabled),
+      icon:           <DollarSign className="w-3.5 h-3.5" />,
+      higherIsBetter: false,
+    },
+    {
+      label:          "Leads",
+      value:          leads > 0 ? formatCompact(leads) : "—",
+      delta:          leads > 0 ? dp(leads, pLeads, compareEnabled) : null,
+      prevLabel:      prevLbl(pLeads, formatCompact, compareEnabled),
+      icon:           <Users className="w-3.5 h-3.5" />,
+      higherIsBetter: true,
+      accent:         true,
+    },
+    {
+      label:          "CPL",
+      value:          cpl > 0 ? formatCurrencyCompact(cpl) : "—",
+      delta:          cpl > 0 ? dp(cpl, pCpl, compareEnabled) : null,
+      prevLabel:      prevLbl(pCpl, formatCurrencyCompact, compareEnabled),
+      icon:           <DollarSign className="w-3.5 h-3.5" />,
+      higherIsBetter: false,
+    },
+    {
+      label:          "CTR",
+      value:          ctr > 0 ? formatPercent(ctr) : "—",
+      delta:          ctr > 0 ? dp(ctr, pCtr, compareEnabled) : null,
+      prevLabel:      prevLbl(pCtr, formatPercent, compareEnabled),
+      icon:           <MousePointerClick className="w-3.5 h-3.5" />,
+      higherIsBetter: true,
+    },
+    {
+      label:          "Impresiones",
+      value:          formatCompact(impressions),
+      delta:          dp(impressions, pImpressions, compareEnabled),
+      prevLabel:      prevLbl(pImpressions, formatCompact, compareEnabled),
+      icon:           <BarChart2 className="w-3.5 h-3.5" />,
+      higherIsBetter: true,
+    },
+    {
+      label:          "Frecuencia promedio",
+      value:          frequency > 0 ? frequency.toFixed(2) : "—",
+      delta:          frequency > 0 ? dp(frequency, pFrequency, compareEnabled) : null,
+      prevLabel:      prevLbl(pFrequency, (v) => v.toFixed(2), compareEnabled),
+      icon:           <Activity className="w-3.5 h-3.5" />,
+      higherIsBetter: false,
+    },
+  ];
+
+  // ── Additional scorecards ────────────────────────────────────────────────
+  const extraKpis: KPIDef[] = [
+    {
+      label:          "Clics totales",
+      value:          formatCompact(aggClicks(c)),
+      delta:          dp(aggClicks(c), p ? aggClicks(p) : undefined, compareEnabled),
+      higherIsBetter: true,
+    },
+    {
+      label:          "CPC",
+      value:          aggClicks(c) > 0 ? formatCurrencyCompact(spend / aggClicks(c)) : "—",
+      higherIsBetter: false,
+    },
+    {
+      label:          "Lead rate",
+      value:          aggClicks(c) > 0 ? formatPercent((leads / aggClicks(c)) * 100) : "—",
+      higherIsBetter: true,
+    },
+  ];
+
+  // ── Aggregation functions for charts ─────────────────────────────────────
+  const fmtCurrency  = (v: number) => formatCurrencyCompact(v);
+  const fmtCount     = (v: number) => formatCompact(v);
+  const aggCplFn     = (rows: SeguimientoRow[]) => aggCPL(rows);
+  const aggLeadsFn   = (rows: SeguimientoRow[]) => aggLeads(rows);
+  const aggSpendFn   = (rows: SeguimientoRow[]) => aggSpend(rows);
+
+  return (
+    <div className="flex flex-col gap-6">
+
+      {/* Objective filter notice */}
+      {noLeadObjectives && (
+        <div
+          className="rounded-xl border px-4 py-3 text-xs flex items-center gap-2"
+          style={{ borderColor: "var(--border)", background: "var(--accent)", color: "var(--muted-foreground)" }}
+        >
+          <Activity className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+          Las campañas no tienen objetivo clasificado — se muestran todas las campañas.
+          Para filtrado preciso, verificá los objetivos en tu cuenta de Ads Manager.
+        </div>
+      )}
+
+      {/* ─── 6 KPI grid ─────────────────────────────────────────────────── */}
+      <section>
+        <KPIGrid kpis={topKpis} cols={3} />
+      </section>
+
+      {/* ─── Additional scorecards ──────────────────────────────────────── */}
+      <section className="flex flex-col gap-2">
+        <p className="text-sm font-semibold">Métricas adicionales</p>
+        <KPIGrid kpis={extraKpis} cols={3} />
+      </section>
+
+      {/* ─── CPL en el tiempo ───────────────────────────────────────────── */}
+      <section>
+        <MetricTimeline
+          data={ts}
+          title="Costo por lead (CPL) en el tiempo"
+          aggregateFn={aggCplFn}
+          formatValue={fmtCurrency}
+          yTickFmt={fmtCurrency}
+          color="#34d399"
+        />
+      </section>
+
+      {/* ─── CPL por campaña (multi-línea) ──────────────────────────────── */}
+      <section>
+        <MetricTimeline
+          data={ts}
+          title="CPL por campaña"
+          aggregateFn={aggCplFn}
+          formatValue={fmtCurrency}
+          yTickFmt={fmtCurrency}
+          multiLine
+        />
+      </section>
+
+      {/* ─── Cantidad de leads ──────────────────────────────────────────── */}
+      <section>
+        <MetricTimeline
+          data={ts}
+          title="Cantidad de leads en el tiempo"
+          aggregateFn={aggLeadsFn}
+          formatValue={fmtCount}
+          yTickFmt={fmtCount}
+          color="#60a5fa"
+        />
+      </section>
+
+      {/* ─── Gasto en el tiempo ─────────────────────────────────────────── */}
+      <section>
+        <MetricTimeline
+          data={ts}
+          title="Gasto en el tiempo"
+          aggregateFn={aggSpendFn}
+          formatValue={fmtCurrency}
+          yTickFmt={fmtCurrency}
+          color="#a78bfa"
+        />
+      </section>
+
+      {/* ─── Comparativa de campañas ────────────────────────────────────── */}
+      <section>
+        <SeguimientoTable
+          rows={c}
+          mode="leads"
+          title="Comparativa de campañas (leads)"
+        />
+      </section>
+
+      {/* ─── Comparativa de ad sets ─────────────────────────────────────── */}
+      <section>
+        <SeguimientoTable
+          rows={as}
+          mode="leads"
+          isAdset
+          title="Comparativa de conjuntos de anuncios (leads)"
+        />
+      </section>
+
+    </div>
+  );
+}

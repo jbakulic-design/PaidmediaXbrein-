@@ -1,0 +1,287 @@
+"use client";
+
+import { useState, useMemo, useCallback } from "react";
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, Legend,
+} from "recharts";
+import { useTheme } from "next-themes";
+import type { SeguimientoRow } from "@/lib/seguimientoApi";
+import { cn } from "@/lib/utils";
+
+// ─── Granularity ─────────────────────────────────────────────────────────────
+
+export type Granularity = "day" | "week" | "month";
+
+function getMondayStr(dateStr: string): string {
+  const d = new Date(dateStr + "T12:00:00Z");
+  const dow = d.getUTCDay(); // 0=Sun
+  const diff = dow === 0 ? -6 : 1 - dow;
+  const mon = new Date(d);
+  mon.setUTCDate(d.getUTCDate() + diff);
+  return mon.toISOString().split("T")[0];
+}
+
+function getGroupKey(date: string, gran: Granularity): string {
+  if (gran === "day")   return date;
+  if (gran === "month") return date.slice(0, 7);
+  return getMondayStr(date);
+}
+
+const MONTHS_ES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+
+function formatKey(key: string, gran: Granularity): string {
+  if (gran === "month") {
+    const [y, m] = key.split("-");
+    return `${MONTHS_ES[parseInt(m) - 1]} '${y.slice(2)}`;
+  }
+  const d = new Date(key + "T12:00:00Z");
+  if (gran === "week") return `${d.getUTCDate()}/${d.getUTCMonth() + 1}`;
+  return `${d.getUTCDate()}/${d.getUTCMonth() + 1}`;
+}
+
+// ─── Palette ──────────────────────────────────────────────────────────────────
+
+const PALETTE = [
+  "#60a5fa","#34d399","#f97316","#a78bfa",
+  "#f87171","#facc15","#2dd4bf","#fb7185","#818cf8","#4ade80",
+  "#38bdf8","#fb923c","#c084fc","#86efac","#fde68a",
+];
+
+// ─── Props ────────────────────────────────────────────────────────────────────
+
+interface BaseProps {
+  data:         SeguimientoRow[];
+  title:        string;
+  /**
+   * Given a group of rows for one time bucket, return the numeric value to plot.
+   * For additive metrics (spend, leads): sum them.
+   * For ratio metrics (CPL, ROAS): compute the ratio from the summed parts.
+   */
+  aggregateFn:  (rows: SeguimientoRow[]) => number;
+  formatValue?: (v: number) => string;
+  /** Series line color — only used in single-line mode */
+  color?:       string;
+  /** y-axis formatter */
+  yTickFmt?:    (v: number) => string;
+  /** Default granularity */
+  defaultGran?: Granularity;
+  /** If true, render one line per unique campaignName */
+  multiLine?:   boolean;
+}
+
+// ─── Tooltip ──────────────────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function ChartTooltip({ active, payload, label, fmt }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div
+      className="rounded-lg border px-3 py-2 text-xs shadow-xl max-w-[240px]"
+      style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--foreground)" }}
+    >
+      <p className="font-semibold mb-1.5 border-b pb-1" style={{ borderColor: "var(--border)" }}>
+        {label}
+      </p>
+      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+      {payload.map((p: any, i: number) => (
+        <div key={i} className="flex items-center justify-between gap-3 mt-0.5">
+          <span className="flex items-center gap-1.5 truncate max-w-[150px]">
+            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: p.color }} />
+            <span className="truncate" style={{ color: "var(--muted-foreground)" }}>{p.name}</span>
+          </span>
+          <span className="font-bold shrink-0">{fmt(p.value ?? 0)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Granularity toggle ───────────────────────────────────────────────────────
+
+function GranToggle({
+  value, onChange,
+}: {
+  value: Granularity;
+  onChange: (g: Granularity) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1">
+      {(["day","week","month"] as Granularity[]).map((g) => (
+        <button
+          key={g}
+          onClick={() => onChange(g)}
+          className={cn(
+            "px-2.5 py-1 rounded-lg text-xs font-medium transition",
+            value === g
+              ? "bg-blue-500/15 text-blue-400 border border-blue-500/30"
+              : "border hover:bg-accent/60"
+          )}
+          style={value !== g
+            ? { borderColor: "var(--border)", color: "var(--muted-foreground)" }
+            : undefined}
+        >
+          {g === "day" ? "Día" : g === "week" ? "Sem" : "Mes"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export function MetricTimeline({
+  data,
+  title,
+  aggregateFn,
+  formatValue,
+  color = "#60a5fa",
+  yTickFmt,
+  defaultGran = "day",
+  multiLine = false,
+}: BaseProps) {
+  const [gran, setGran] = useState<Granularity>(defaultGran);
+  const { theme } = useTheme();
+  const gridColor = theme === "dark" ? "#1e293b" : "#e2e8f0";
+  const textColor = theme === "dark" ? "#94a3b8" : "#64748b";
+
+  const fmt = useCallback(
+    (v: number) => (formatValue ? formatValue(v) : v.toFixed(1)),
+    [formatValue]
+  );
+
+  const yFmt = yTickFmt ?? fmt;
+
+  // ── Build chart data ──────────────────────────────────────────────────────
+
+  const { chartData, campaignNames } = useMemo(() => {
+    if (!multiLine) {
+      // Group all rows by time bucket → single metric value per bucket
+      const buckets = new Map<string, SeguimientoRow[]>();
+      for (const row of data) {
+        if (!row.date) continue;
+        const k = getGroupKey(row.date, gran);
+        if (!buckets.has(k)) buckets.set(k, []);
+        buckets.get(k)!.push(row);
+      }
+      const chartData = Array.from(buckets.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([k, rows]) => ({
+          date:    formatKey(k, gran),
+          rawDate: k,
+          value:   aggregateFn(rows),
+        }));
+      return { chartData, campaignNames: [] as string[] };
+    } else {
+      // Multi-line: one series per campaign name
+      const uniqueCampaigns = [...new Set(data.map((r) => r.campaignName))];
+
+      // Group by (bucket, campaignName)
+      const bucketCamp = new Map<string, Map<string, SeguimientoRow[]>>();
+      for (const row of data) {
+        if (!row.date) continue;
+        const dk = getGroupKey(row.date, gran);
+        if (!bucketCamp.has(dk)) bucketCamp.set(dk, new Map());
+        const campMap = bucketCamp.get(dk)!;
+        if (!campMap.has(row.campaignName)) campMap.set(row.campaignName, []);
+        campMap.get(row.campaignName)!.push(row);
+      }
+
+      const sortedBuckets = Array.from(bucketCamp.keys()).sort();
+      const chartData = sortedBuckets.map((dk) => {
+        const campMap = bucketCamp.get(dk)!;
+        const entry: Record<string, string | number | null> = {
+          date:    formatKey(dk, gran),
+          rawDate: dk,
+        };
+        for (const name of uniqueCampaigns) {
+          const rows = campMap.get(name);
+          entry[name] = rows && rows.length > 0 ? aggregateFn(rows) : null;
+        }
+        return entry;
+      });
+      return { chartData, campaignNames: uniqueCampaigns };
+    }
+  }, [data, gran, aggregateFn, multiLine]);
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
+  return (
+    <div
+      className="rounded-xl border flex flex-col gap-3 p-4"
+      style={{ background: "var(--card)", borderColor: "var(--border)" }}
+    >
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className="text-sm font-semibold">{title}</p>
+        <GranToggle value={gran} onChange={setGran} />
+      </div>
+
+      {chartData.length === 0 ? (
+        <div className="h-48 flex items-center justify-center">
+          <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+            Sin datos para este período
+          </p>
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={220}>
+          <LineChart data={chartData} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 10, fill: textColor }}
+              axisLine={false}
+              tickLine={false}
+              interval="preserveStartEnd"
+            />
+            <YAxis
+              tickFormatter={yFmt}
+              tick={{ fontSize: 10, fill: textColor }}
+              axisLine={false}
+              tickLine={false}
+              width={58}
+            />
+            <Tooltip
+              content={<ChartTooltip fmt={fmt} />}
+            />
+
+            {!multiLine ? (
+              <Line
+                type="monotone"
+                dataKey="value"
+                stroke={color}
+                strokeWidth={2}
+                dot={false}
+                name={title}
+                activeDot={{ r: 4, strokeWidth: 0 }}
+              />
+            ) : (
+              <>
+                {campaignNames.map((name, i) => (
+                  <Line
+                    key={name}
+                    type="monotone"
+                    dataKey={name}
+                    stroke={PALETTE[i % PALETTE.length]}
+                    strokeWidth={1.5}
+                    dot={false}
+                    connectNulls={false}
+                    name={name.length > 28 ? name.slice(0, 26) + "…" : name}
+                    activeDot={{ r: 3, strokeWidth: 0 }}
+                  />
+                ))}
+                <Legend
+                  iconType="circle"
+                  iconSize={7}
+                  wrapperStyle={{ fontSize: 10 }}
+                  formatter={(value: string) => (
+                    <span style={{ color: textColor }}>{value}</span>
+                  )}
+                />
+              </>
+            )}
+          </LineChart>
+        </ResponsiveContainer>
+      )}
+    </div>
+  );
+}

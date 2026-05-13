@@ -4,13 +4,14 @@ import {
   BarChart3, BookMarked, Table2, LineChart, Layers,
   ChevronRight, Menu, X, Zap, ShoppingCart, Users, MessageCircle,
   LogOut, ChevronDown, Columns2, Loader2, CalendarDays, Search, RefreshCw,
+  Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import type { MetaAdAccount, DatePreset } from "@/lib/metaApi";
 import { DATE_PRESET_LABELS } from "@/lib/metaApi";
 
-export type MainTab = "analysis" | "reports";
+export type MainTab = "analysis" | "reports" | "seguimiento";
 export type AnalysisTab = "table" | "charts" | "structure" | "compare" | "budget";
 export type CampaignType = "ecommerce" | "leads" | "messages";
 
@@ -267,6 +268,23 @@ function NavContent(props: SidebarProps & { onClose?: () => void }) {
               {reportsCount}
             </span>
           )}
+        </button>
+
+        <div className="my-1 border-t" style={{ borderColor: "var(--border)" }} />
+
+        <button
+          onClick={() => { onMainTab("seguimiento"); onClose?.(); }}
+          className={cn(
+            "flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-sm font-medium transition-all",
+            mainTab === "seguimiento" ? "bg-blue-500/10 text-blue-400" : "hover:bg-accent/60"
+          )}
+          style={mainTab !== "seguimiento" ? { color: "var(--foreground)" } : undefined}
+        >
+          <Activity className="w-4 h-4 shrink-0" />
+          Seguimiento
+          <span className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+            TBREIN
+          </span>
         </button>
 
         {metaQuick && (
