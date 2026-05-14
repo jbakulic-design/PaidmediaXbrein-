@@ -351,14 +351,24 @@ function parseRow(
   const cid = r.campaign_id ?? "";
 
   // If we know the specific custom conversion this campaign optimizes for,
-  // use it directly. Otherwise fall back to the MAX heuristic.
+  // try that ID first. If it returns 0 (e.g. Tally/server-side integrations
+  // that report under a different action type), fall back to the MAX heuristic
+  // across all custom conversion types.
   const targetConvId = convIdMap?.get(cid);
-  const customConversions = targetConvId
-    ? getAction(r.actions,  `offsite_conversion.custom.${targetConvId}`)
-    : getCustomConversions(r.actions);
-  const customConversionValue = targetConvId
-    ? getAction(r.action_values, `offsite_conversion.custom.${targetConvId}`)
-    : getCustomConversions(r.action_values);
+  const customConversions = (() => {
+    if (targetConvId) {
+      const specific = getAction(r.actions, `offsite_conversion.custom.${targetConvId}`);
+      if (specific > 0) return specific;
+    }
+    return getCustomConversions(r.actions);
+  })();
+  const customConversionValue = (() => {
+    if (targetConvId) {
+      const specific = getAction(r.action_values, `offsite_conversion.custom.${targetConvId}`);
+      if (specific > 0) return specific;
+    }
+    return getCustomConversions(r.action_values);
+  })();
 
   return {
     campaignId:    cid,
