@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Loader2, ShoppingCart, Users, MessageCircle, Zap } from "lucide-react";
+import { Loader2, Users, Zap } from "lucide-react";
 import type { MetaAdAccount } from "@/lib/metaApi";
 import type { SeguimientoPayload, DateRange, SeguimientoPreset } from "@/lib/seguimientoApi";
 import {
@@ -12,18 +12,14 @@ import {
 } from "@/lib/seguimientoApi";
 import { cn } from "@/lib/utils";
 import { GlobalFilters } from "./GlobalFilters";
-import { EcommercePage } from "./pages/EcommercePage";
 import { LeadsPage } from "./pages/LeadsPage";
-import { ConversationsPage } from "./pages/ConversationsPage";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type ActiveTab = "ecommerce" | "leads" | "conversations";
+type ActiveTab = "leads";
 
 const TABS: { key: ActiveTab; label: string; icon: React.ReactNode }[] = [
-  { key: "ecommerce",     label: "Performance e-commerce",      icon: <ShoppingCart className="w-3.5 h-3.5" /> },
-  { key: "leads",         label: "Performance leads",           icon: <Users className="w-3.5 h-3.5" /> },
-  { key: "conversations", label: "Performance conversaciones",  icon: <MessageCircle className="w-3.5 h-3.5" /> },
+  { key: "leads", label: "Performance leads", icon: <Users className="w-3.5 h-3.5" /> },
 ];
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -42,7 +38,7 @@ export function TbreinDashboard({ token, accounts, defaultAccountId }: Props) {
   const [preset,         setPreset]         = useState<SeguimientoPreset>("last_30d");
   const [range,          setRange]          = useState<DateRange>(() => presetToRange("last_30d"));
   const [compareEnabled, setCompareEnabled] = useState(true);
-  const [activeTab,      setActiveTab]      = useState<ActiveTab>("ecommerce");
+  const [activeTab,      setActiveTab]      = useState<ActiveTab>("leads");
 
   // ── Data state ─────────────────────────────────────────────────────────
   const [data,     setData]     = useState<SeguimientoPayload | null>(null);
@@ -234,28 +230,12 @@ export function TbreinDashboard({ token, accounts, defaultAccountId }: Props) {
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.18, ease: "easeOut" }}
             >
-              {activeTab === "ecommerce" && (
-                <EcommercePage
-                  data={data}
-                  prevData={compareEnabled ? prevData : null}
-                  compareEnabled={compareEnabled}
-                />
-              )}
-
               {activeTab === "leads" && (
                 <LeadsPage
                   data={data}
                   prevData={compareEnabled ? prevData : null}
                   compareEnabled={compareEnabled}
                   accountId={accountId}
-                />
-              )}
-
-              {activeTab === "conversations" && (
-                <ConversationsPage
-                  data={data}
-                  prevData={compareEnabled ? prevData : null}
-                  compareEnabled={compareEnabled}
                 />
               )}
             </motion.div>

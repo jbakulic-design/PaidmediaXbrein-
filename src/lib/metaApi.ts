@@ -32,9 +32,9 @@ async function fetchAllPages<T>(url: string): Promise<T[]> {
   const results: T[] = [];
   let next: string | null = url;
   while (next) {
-    const res = await fetch(next);
+    const res: Response = await fetch(next);
     if (!res.ok) break;
-    const data = await res.json();
+    const data: { data?: T[]; paging?: { next?: string } } = await res.json();
     results.push(...(data.data ?? []));
     next = data.paging?.next ?? null;
   }
@@ -116,11 +116,65 @@ function getActionValue(
 
 export type ObjectStatus = "ACTIVE" | "PAUSED" | "ARCHIVED" | "DELETED";
 
+// ─── Extended config types ─────────────────────────────────────────────────────
+
+export interface MetaGeoLocations {
+  countries?: string[];
+  cities?: { name: string; country: string }[];
+  regions?: { name: string; country: string }[];
+  location_types?: string[];
+}
+
+export interface MetaTargeting {
+  age_min?: number;
+  age_max?: number;
+  genders?: number[];
+  geo_locations?: MetaGeoLocations;
+  interests?: { id: string; name: string }[];
+  behaviors?: { id: string; name: string }[];
+  custom_audiences?: { id: string; name: string }[];
+  excluded_custom_audiences?: { id: string; name: string }[];
+  flexible_spec?: { interests?: { id: string; name: string }[] }[];
+  device_platforms?: string[];
+  publisher_platforms?: string[];
+  facebook_positions?: string[];
+  instagram_positions?: string[];
+  audience_network_positions?: string[];
+  messenger_positions?: string[];
+}
+
+export interface MetaTargetingAutomation {
+  advantage_audience?: number; // 1 = on
+}
+
+export interface MetaPromotedObject {
+  pixel_id?: string;
+  custom_event_type?: string;
+  custom_conversion_id?: string;
+  page_id?: string;
+  application_id?: string;
+}
+
+export interface MetaCreative {
+  id?: string;
+  name?: string;
+  title?: string;
+  body?: string;
+  image_url?: string;
+  object_url?: string;
+  call_to_action_type?: string;
+}
+
+// ─── Node types (extended with config) ────────────────────────────────────────
+
 export interface AdNode {
   id: string;
   name: string;
   status: ObjectStatus;
   effectiveStatus: string;
+  // Config
+  creative?: MetaCreative;
+  isDynamicCreative?: boolean; // Advantage+ creative
 }
 
 export interface AdsetNode {
@@ -130,6 +184,16 @@ export interface AdsetNode {
   effectiveStatus: string;
   campaignId: string;
   ads: AdNode[];
+  // Config
+  optimizationGoal?: string;
+  billingEvent?: string;
+  bidAmount?: number;
+  dailyBudget?: number;
+  lifetimeBudget?: number;
+  targeting?: MetaTargeting;
+  targetingAutomation?: MetaTargetingAutomation; // Advantage+ audience
+  promotedObject?: MetaPromotedObject;
+  destinationType?: string;
 }
 
 export interface CampaignNode {
@@ -138,6 +202,14 @@ export interface CampaignNode {
   status: ObjectStatus;
   effectiveStatus: string;
   adsets: AdsetNode[];
+  // Config
+  objective?: string;
+  dailyBudget?: number;
+  lifetimeBudget?: number;
+  bidStrategy?: string;
+  buyingType?: string;
+  specialAdCategories?: string[];
+  smartPromotionType?: string; // Advantage+ Shopping
 }
 
 async function fetchPaged<T>(url: string): Promise<T[]> {
@@ -156,6 +228,26 @@ async function fetchPaged<T>(url: string): Promise<T[]> {
   return results;
 }
 
+// Raw API response types (before normalization)
+type RawCampaign = {
+  id: string; name: string; status: string; effective_status: string;
+  objective?: string; daily_budget?: string; lifetime_budget?: string;
+  bid_strategy?: string; buying_type?: string; special_ad_categories?: string[];
+  smart_promotion_type?: string;
+};
+type RawAdset = {
+  id: string; name: string; status: string; effective_status: string; campaign_id: string;
+  optimization_goal?: string; billing_event?: string; bid_amount?: string;
+  daily_budget?: string; lifetime_budget?: string;
+  targeting?: MetaTargeting; targeting_automation?: MetaTargetingAutomation;
+  promoted_object?: MetaPromotedObject; destination_type?: string;
+};
+type RawAd = {
+  id: string; name: string; status: string; effective_status: string; adset_id: string;
+  creative?: MetaCreative;
+  is_dynamic_creative?: boolean;
+};
+
 export async function fetchAccountStructure(
   token: string,
   accountId: string
@@ -164,22 +256,45 @@ export async function fetchAccountStructure(
   const base = `${GRAPH}/${id}`;
   const t = `access_token=${token}`;
 
+  const campaignFields = [
+    "id","name","status","effective_status",
+    "objective","daily_budget","lifetime_budget",
+    "bid_strategy","buying_type","special_ad_categories",
+    "smart_promotion_type",
+  ].join(",");
+
+  const adsetFields = [
+    "id","name","status","effective_status","campaign_id",
+    "optimization_goal","billing_event","bid_amount",
+    "daily_budget","lifetime_budget",
+    "targeting","targeting_automation","promoted_object","destination_type",
+  ].join(",");
+
+  const adFields = [
+    "id","name","status","effective_status","adset_id",
+    "is_dynamic_creative",
+    "creative{id,name,title,body,image_url,object_url,call_to_action_type}",
+  ].join(",");
+
   const [rawCampaigns, rawAdsets, rawAds] = await Promise.all([
-    fetchPaged<{ id: string; name: string; status: string; effective_status: string }>(
-      `${base}/campaigns?fields=id,name,status,effective_status&limit=100&${t}`
-    ),
-    fetchPaged<{ id: string; name: string; status: string; effective_status: string; campaign_id: string }>(
-      `${base}/adsets?fields=id,name,status,effective_status,campaign_id&limit=200&${t}`
-    ),
-    fetchPaged<{ id: string; name: string; status: string; effective_status: string; adset_id: string }>(
-      `${base}/ads?fields=id,name,status,effective_status,adset_id&limit=500&${t}`
-    ),
+    fetchPaged<RawCampaign>(`${base}/campaigns?fields=${campaignFields}&limit=100&${t}`),
+    fetchPaged<RawAdset>(`${base}/adsets?fields=${adsetFields}&limit=200&${t}`),
+    fetchPaged<RawAd>(`${base}/ads?fields=${adFields}&limit=500&${t}`),
   ]);
+
+  const pn = (v?: string) => (v ? parseFloat(v) || 0 : 0);
 
   const adsByAdset = new Map<string, AdNode[]>();
   for (const ad of rawAds) {
     const list = adsByAdset.get(ad.adset_id) ?? [];
-    list.push({ id: ad.id, name: ad.name, status: ad.status as ObjectStatus, effectiveStatus: ad.effective_status });
+    list.push({
+      id: ad.id,
+      name: ad.name,
+      status: ad.status as ObjectStatus,
+      effectiveStatus: ad.effective_status,
+      creative: ad.creative,
+      isDynamicCreative: ad.is_dynamic_creative ?? false,
+    });
     adsByAdset.set(ad.adset_id, list);
   }
 
@@ -193,6 +308,15 @@ export async function fetchAccountStructure(
       effectiveStatus: as.effective_status,
       campaignId: as.campaign_id,
       ads: adsByAdset.get(as.id) ?? [],
+      optimizationGoal:      as.optimization_goal,
+      billingEvent:          as.billing_event,
+      bidAmount:             pn(as.bid_amount),
+      dailyBudget:           pn(as.daily_budget),
+      lifetimeBudget:        pn(as.lifetime_budget),
+      targeting:             as.targeting,
+      targetingAutomation:   as.targeting_automation,
+      promotedObject:        as.promoted_object,
+      destinationType:       as.destination_type,
     });
     adsetsByCampaign.set(as.campaign_id, list);
   }
@@ -203,6 +327,13 @@ export async function fetchAccountStructure(
     status: c.status as ObjectStatus,
     effectiveStatus: c.effective_status,
     adsets: adsetsByCampaign.get(c.id) ?? [],
+    objective:           c.objective,
+    dailyBudget:         pn(c.daily_budget),
+    lifetimeBudget:      pn(c.lifetime_budget),
+    bidStrategy:         c.bid_strategy,
+    buyingType:          c.buying_type,
+    specialAdCategories: c.special_ad_categories ?? [],
+    smartPromotionType:  c.smart_promotion_type,
   }));
 }
 
