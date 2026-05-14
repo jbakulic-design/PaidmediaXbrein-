@@ -19,26 +19,40 @@ interface Props {
   compareEnabled: boolean;
 }
 
-/** Filter rows to messages/conversations-objective campaigns only.
- *  Falls back to campaigns that actually have conversation data if the
- *  objective-based filter yields rows with 0 conversations (e.g. Expren). */
-function filterConversations(rows: SeguimientoRow[]): SeguimientoRow[] {
-  const byObjective = rows.filter((r) => isMessagesObjective(r.objective));
-
-  // Happy path: objective-filtered rows have actual conversations
-  if (byObjective.length > 0 && byObjective.some((r) => r.conversations > 0)) {
-    return byObjective;
+/** Builds the set of valid campaign IDs for conversation filtering.
+ *  Computed once from campaigns and reused for adsets & timeSeries so all
+ *  arrays stay consistent (avoids the heuristic firing differently per array). */
+function conversationCampaignIds(rows: SeguimientoRow[]): Set<string> | null {
+  // Priority 1: objective-matched campaigns that have actual data
+  const byObjectiveWithData = rows.filter(
+    (r) => isMessagesObjective(r.objective) && r.conversations > 0
+  );
+  if (byObjectiveWithData.length > 0) {
+    return new Set(byObjectiveWithData.map((r) => r.campaignId));
   }
 
-  // Fallback 1: any row with conversation data, regardless of objective label
+  // Priority 2: any campaign with conversation data
   const withData = rows.filter((r) => r.conversations > 0);
-  if (withData.length > 0) return withData;
+  if (withData.length > 0) {
+    return new Set(withData.map((r) => r.campaignId));
+  }
 
-  // Fallback 2: objective match (even if 0 conversations — at least shows correct set)
-  if (byObjective.length > 0) return byObjective;
+  // Priority 3: objective match even with 0 conversations
+  const byObjective = rows.filter((r) => isMessagesObjective(r.objective));
+  if (byObjective.length > 0) {
+    return new Set(byObjective.map((r) => r.campaignId));
+  }
 
-  // Last resort: show everything
-  return rows;
+  // Last resort: show everything (null = no filter)
+  return null;
+}
+
+/** Filters rows using a pre-computed Set so time series daily rows are all
+ *  preserved (one row per campaign per day) rather than being deduped. */
+function filterConversations(rows: SeguimientoRow[], validIds?: Set<string> | null): SeguimientoRow[] {
+  const ids = validIds ?? conversationCampaignIds(rows);
+  if (!ids) return rows;
+  return rows.filter((r) => ids.has(r.campaignId));
 }
 
 function dp(curr: number, prev: number | undefined, enabled: boolean) {
@@ -56,11 +70,14 @@ function prevLbl(
 }
 
 export function ConversationsPage({ data, prevData, compareEnabled }: Props) {
-  // Filter all data arrays
-  const c  = filterConversations(data.campaigns);
-  const as = filterConversations(data.adsets);
-  const ts = filterConversations(data.timeSeries);
-  const p  = prevData ? filterConversations(prevData.campaigns) : undefined;
+  // Compute valid IDs once from campaigns, reuse for adsets & timeSeries
+  // so all arrays are filtered consistently with the same heuristic result.
+  const validIds = conversationCampaignIds(data.campaigns);
+  const c  = filterConversations(data.campaigns,  validIds);
+  const as = filterConversations(data.adsets,      validIds);
+  const ts = filterConversations(data.timeSeries,  validIds);
+  const pIds = prevData ? conversationCampaignIds(prevData.campaigns) : null;
+  const p  = prevData ? filterConversations(prevData.campaigns, pIds) : undefined;
 
   // Show notice only when we fell back to non-objective-matched rows
   const noMessagesObjectives =

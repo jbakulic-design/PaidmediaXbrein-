@@ -95,8 +95,10 @@ function cellValue(r: SeguimientoRow, key: string): string {
   switch (key) {
     case "spend":
       return formatCurrencyCompact(r.spend);
-    case "revenue":
-      return r.purchaseValue > 0 ? formatCurrencyCompact(r.purchaseValue) : "—";
+    case "revenue": {
+      const rev = r.purchaseValue > 0 ? r.purchaseValue : (r.customConversionValue ?? 0);
+      return rev > 0 ? formatCurrencyCompact(rev) : "—";
+    }
     case "roas":
       return rowRoas(r) > 0 ? formatRoas(rowRoas(r)) : "—";
     case "purchases":

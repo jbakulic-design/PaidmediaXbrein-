@@ -281,10 +281,10 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
             <span className="text-xs font-medium" style={{ color: "var(--muted-foreground)" }}>
               ROAS global
             </span>
-            <span className="text-4xl font-bold">{roas > 0 ? formatRoas(roas) : "—"}</span>
-            {compareEnabled && pRoas !== undefined && pRoas > 0 && (
+            <span className="text-4xl font-bold">{effRoas > 0 ? formatRoas(effRoas) : "—"}</span>
+            {compareEnabled && pEffRoas !== undefined && pEffRoas > 0 && (
               <span className="text-xs" style={{ color: "var(--muted-foreground)" }}>
-                Anterior: {formatRoas(pRoas)}
+                Anterior: {formatRoas(pEffRoas)}
               </span>
             )}
           </div>
