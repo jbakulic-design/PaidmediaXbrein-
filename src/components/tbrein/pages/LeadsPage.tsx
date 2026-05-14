@@ -5,6 +5,7 @@ import type { SeguimientoPayload, SeguimientoRow } from "@/lib/seguimientoApi";
 import {
   isLeadObjective,
   aggSpend, aggLeads, aggCPL, aggCTR,
+  aggCustomConversions, aggCustomCPA,
   aggImpressions, aggFrequency, aggClicks,
   deltaPct,
 } from "@/lib/seguimientoApi";
@@ -20,8 +21,8 @@ interface Props {
 }
 
 /** Filter rows to lead-objective campaigns only.
- *  Falls back to campaigns that actually have lead data if the
- *  objective-based filter yields rows with 0 leads. */
+ *  Falls back to campaigns with custom conversions (pixel form submissions)
+ *  when no native lead data is found. */
 function filterLeads(rows: SeguimientoRow[]): SeguimientoRow[] {
   const byObjective = rows.filter((r) => isLeadObjective(r.objective));
 
@@ -30,11 +31,15 @@ function filterLeads(rows: SeguimientoRow[]): SeguimientoRow[] {
     return byObjective;
   }
 
-  // Fallback 1: any row with lead data, regardless of objective label
-  const withData = rows.filter((r) => r.leads > 0);
-  if (withData.length > 0) return withData;
+  // Fallback 1: any row with native lead data, regardless of objective label
+  const withLeads = rows.filter((r) => r.leads > 0);
+  if (withLeads.length > 0) return withLeads;
 
-  // Fallback 2: objective match (even if 0 leads)
+  // Fallback 2: rows with custom conversions (e.g. pixel form-submit events)
+  const withCustom = rows.filter((r) => r.customConversions > 0);
+  if (withCustom.length > 0) return withCustom;
+
+  // Fallback 3: objective match (even if 0 leads)
   if (byObjective.length > 0) return byObjective;
 
   // Last resort: show everything
@@ -75,12 +80,25 @@ export function LeadsPage({ data, prevData, compareEnabled }: Props) {
   const impressions = aggImpressions(c);
   const frequency   = aggFrequency(c);
 
-  const pSpend       = p ? aggSpend(p) : undefined;
-  const pLeads       = p ? aggLeads(p) : undefined;
-  const pCpl         = p ? aggCPL(p) : undefined;
-  const pCtr         = p ? aggCTR(p) : undefined;
-  const pImpressions = p ? aggImpressions(p) : undefined;
-  const pFrequency   = p ? aggFrequency(p) : undefined;
+  // Custom conversions — fallback when no native leads (e.g. pixel form-submit events)
+  const customConvs = aggCustomConversions(c);
+  const customCpl   = aggCustomCPA(c);
+  const useCustomConvs = leads === 0 && customConvs > 0;
+
+  // Effective lead metrics
+  const effLeads = useCustomConvs ? customConvs : leads;
+  const effCpl   = useCustomConvs ? customCpl   : cpl;
+
+  const pSpend        = p ? aggSpend(p) : undefined;
+  const pLeads        = p ? aggLeads(p) : undefined;
+  const pCpl          = p ? aggCPL(p)   : undefined;
+  const pCtr          = p ? aggCTR(p)   : undefined;
+  const pImpressions  = p ? aggImpressions(p) : undefined;
+  const pFrequency    = p ? aggFrequency(p)   : undefined;
+  const pCustomConvs  = p ? aggCustomConversions(p) : undefined;
+  const pCustomCpl    = p ? aggCustomCPA(p)         : undefined;
+  const pEffLeads     = useCustomConvs ? pCustomConvs : pLeads;
+  const pEffCpl       = useCustomConvs ? pCustomCpl   : pCpl;
 
   // ── Top 6 KPI grid ───────────────────────────────────────────────────────
   const topKpis: KPIDef[] = [
@@ -94,20 +112,20 @@ export function LeadsPage({ data, prevData, compareEnabled }: Props) {
       higherIsBetter: false,
     },
     {
-      label:          "Leads",
-      value:          leads > 0 ? formatCompact(leads) : "—",
-      delta:          leads > 0 ? dp(leads, pLeads, compareEnabled) : null,
-      prevLabel:      prevLbl(pLeads, formatCompact, compareEnabled),
+      label:          useCustomConvs ? "Conversiones" : "Leads",
+      value:          effLeads > 0 ? formatCompact(effLeads) : "—",
+      delta:          effLeads > 0 ? dp(effLeads, pEffLeads, compareEnabled) : null,
+      prevLabel:      prevLbl(pEffLeads, formatCompact, compareEnabled),
       icon:           <Users className="w-3.5 h-3.5" />,
-      msIcon:         "group",
+      msIcon:         useCustomConvs ? "conversion_path" : "group",
       higherIsBetter: true,
       accent:         true,
     },
     {
-      label:          "CPL",
-      value:          cpl > 0 ? formatCurrencyCompact(cpl) : "—",
-      delta:          cpl > 0 ? dp(cpl, pCpl, compareEnabled) : null,
-      prevLabel:      prevLbl(pCpl, formatCurrencyCompact, compareEnabled),
+      label:          useCustomConvs ? "Costo por conversión" : "CPL",
+      value:          effCpl > 0 ? formatCurrencyCompact(effCpl) : "—",
+      delta:          effCpl > 0 ? dp(effCpl, pEffCpl, compareEnabled) : null,
+      prevLabel:      prevLbl(pEffCpl, formatCurrencyCompact, compareEnabled),
       icon:           <DollarSign className="w-3.5 h-3.5" />,
       msIcon:         "price_change",
       higherIsBetter: false,
@@ -155,8 +173,8 @@ export function LeadsPage({ data, prevData, compareEnabled }: Props) {
       higherIsBetter: false,
     },
     {
-      label:          "Lead rate",
-      value:          aggClicks(c) > 0 ? formatPercent((leads / aggClicks(c)) * 100) : "—",
+      label:          useCustomConvs ? "Conv. rate" : "Lead rate",
+      value:          aggClicks(c) > 0 ? formatPercent((effLeads / aggClicks(c)) * 100) : "—",
       higherIsBetter: true,
     },
   ];
@@ -164,15 +182,27 @@ export function LeadsPage({ data, prevData, compareEnabled }: Props) {
   // ── Aggregation functions for charts ─────────────────────────────────────
   const fmtCurrency  = (v: number) => formatCurrencyCompact(v);
   const fmtCount     = (v: number) => formatCompact(v);
-  const aggCplFn     = (rows: SeguimientoRow[]) => aggCPL(rows);
-  const aggLeadsFn   = (rows: SeguimientoRow[]) => aggLeads(rows);
+  const aggCplFn     = (rows: SeguimientoRow[]) => useCustomConvs ? aggCustomCPA(rows)          : aggCPL(rows);
+  const aggLeadsFn   = (rows: SeguimientoRow[]) => useCustomConvs ? aggCustomConversions(rows)  : aggLeads(rows);
   const aggSpendFn   = (rows: SeguimientoRow[]) => aggSpend(rows);
 
   return (
     <div className="flex flex-col gap-6">
 
+      {/* Aviso conversiones personalizadas */}
+      {useCustomConvs && (
+        <div
+          className="rounded-xl border px-4 py-3 text-xs flex items-center gap-2"
+          style={{ borderColor: "#1e3d6e", background: "#0a1b30", color: "#a4c9ff" }}
+        >
+          <span className="material-symbols-outlined shrink-0" style={{ fontSize: "14px" }}>conversion_path</span>
+          Se detectaron <strong>conversiones personalizadas</strong> como KPI principal (ej. formularios trackeados por píxel).
+          Los valores de "Conversiones" y "Costo por conversión" corresponden a esos eventos custom.
+        </div>
+      )}
+
       {/* Objective filter notice */}
-      {noLeadObjectives && (
+      {noLeadObjectives && !useCustomConvs && (
         <div
           className="rounded-xl border px-4 py-3 text-xs flex items-center gap-2"
           style={{ borderColor: "var(--border)", background: "var(--accent)", color: "var(--muted-foreground)" }}
@@ -194,11 +224,11 @@ export function LeadsPage({ data, prevData, compareEnabled }: Props) {
         <KPIGrid kpis={extraKpis} cols={3} />
       </section>
 
-      {/* ─── CPL en el tiempo ───────────────────────────────────────────── */}
+      {/* ─── CPL / Costo por conversión en el tiempo ────────────────────── */}
       <section>
         <MetricTimeline
           data={ts}
-          title="Costo por lead (CPL) en el tiempo"
+          title={useCustomConvs ? "Costo por conversión en el tiempo" : "Costo por lead (CPL) en el tiempo"}
           aggregateFn={aggCplFn}
           formatValue={fmtCurrency}
           yTickFmt={fmtCurrency}
@@ -208,11 +238,11 @@ export function LeadsPage({ data, prevData, compareEnabled }: Props) {
         />
       </section>
 
-      {/* ─── Cantidad de leads ──────────────────────────────────────────── */}
+      {/* ─── Leads / Conversiones en el tiempo ──────────────────────────── */}
       <section>
         <MetricTimeline
           data={ts}
-          title="Cantidad de leads en el tiempo"
+          title={useCustomConvs ? "Conversiones en el tiempo" : "Cantidad de leads en el tiempo"}
           aggregateFn={aggLeadsFn}
           formatValue={fmtCount}
           yTickFmt={fmtCount}
