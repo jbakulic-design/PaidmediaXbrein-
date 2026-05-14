@@ -26,21 +26,23 @@ interface Props {
  *  or custom conversions (pixel form events). We merge all three sets so
  *  accounts with mixed tracking (some native leads + some custom conversions)
  *  don't drop any campaigns. */
-function filterLeads(rows: SeguimientoRow[]): SeguimientoRow[] {
-  const byObjective  = rows.filter((r) => isLeadObjective(r.objective));
-  const withConvData = rows.filter((r) => r.leads > 0 || r.customConversions > 0);
+/** Builds the set of valid campaign IDs for lead filtering. */
+function leadCampaignIds(rows: SeguimientoRow[]): Set<string> | null {
+  const ids = new Set<string>();
+  for (const r of rows) {
+    if (isLeadObjective(r.objective) || r.leads > 0 || r.customConversions > 0)
+      ids.add(r.campaignId);
+  }
+  return ids.size > 0 ? ids : null;
+}
 
-  // Union: objective-matched + any with real lead/conv data (dedup by campaignId)
-  const merged = [
-    ...new Map(
-      [...byObjective, ...withConvData].map((r) => [r.campaignId, r])
-    ).values(),
-  ];
-
-  if (merged.length > 0) return merged;
-
-  // Nothing found at all: show everything rather than empty screen
-  return rows;
+/** Filters rows to lead-relevant campaigns.
+ *  Uses a Set of valid IDs so time series rows (multiple per campaign) are
+ *  all preserved — unlike the old Map-dedup which kept only the last day. */
+function filterLeads(rows: SeguimientoRow[], validIds?: Set<string> | null): SeguimientoRow[] {
+  const ids = validIds ?? leadCampaignIds(rows);
+  if (!ids) return rows; // nothing found → show everything
+  return rows.filter((r) => ids.has(r.campaignId));
 }
 
 function dp(curr: number, prev: number | undefined, enabled: boolean) {
@@ -58,11 +60,14 @@ function prevLbl(
 }
 
 export function LeadsPage({ data, prevData, compareEnabled }: Props) {
-  // Filter all data arrays to leads only
-  const c  = filterLeads(data.campaigns);
-  const as = filterLeads(data.adsets);
-  const ts = filterLeads(data.timeSeries);
-  const p  = prevData ? filterLeads(prevData.campaigns) : undefined;
+  // Compute valid campaign IDs once from campaigns, then reuse for adsets & timeSeries.
+  // This prevents the old Map-dedup from killing time series rows (multiple rows per campaign).
+  const validIds = leadCampaignIds(data.campaigns);
+  const c  = filterLeads(data.campaigns,    validIds);
+  const as = filterLeads(data.adsets,       validIds);
+  const ts = filterLeads(data.timeSeries,   validIds);
+  const pIds = prevData ? leadCampaignIds(prevData.campaigns) : null;
+  const p  = prevData ? filterLeads(prevData.campaigns, pIds) : undefined;
 
   // Show notice only when no campaign has a lead objective tag at all
   const noLeadObjectives =
