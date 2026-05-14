@@ -243,7 +243,7 @@ export default function Dashboard() {
   if (!authenticated) return <LoginGate onLogin={login} />;
 
   return (
-    <div className="min-h-screen flex" style={{ background: "var(--background)" }}>
+    <div className="min-h-screen flex bg-background">
 
       <Sidebar
         mainTab={mainTab}
@@ -274,34 +274,36 @@ export default function Dashboard() {
 
       <div className="flex-1 flex flex-col min-w-0">
 
-        {/* Header slim */}
-        <header
-          className="sticky top-0 z-40 border-b backdrop-blur-sm"
-          style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--card) 90%, transparent)" }}
-        >
-          <div className="flex items-center justify-between px-4 py-2.5 md:pl-4 pl-12">
-            <ClientSwitcher
-              workspaces={workspaces}
-              active={activeWorkspace}
-              onCreate={createWorkspace}
-              onSwitch={switchWorkspace}
-              onRename={renameWorkspace}
-              onDelete={deleteWorkspace}
-            />
-            <div className="flex items-center gap-2">
-              <AlertsBell alerts={alerts} />
-              {(syncing || metaLoading) && (
-                <span className="flex items-center gap-1 text-xs" style={{ color: "var(--muted-foreground)" }}>
-                  <Loader2 className="w-3 h-3 animate-spin" />
+        {/* TopNavBar */}
+        <header className="sticky top-0 z-40 w-full bg-surface/80 backdrop-blur-md border-b border-outline-variant flex justify-between items-center h-16 px-6 md:pl-6 pl-14">
+          <div className="flex items-center gap-6">
+            <span className="text-base font-black text-on-surface tracking-tight hidden sm:block">XBREIN</span>
+            <div className="hidden md:flex">
+              <ClientSwitcher
+                workspaces={workspaces}
+                active={activeWorkspace}
+                onCreate={createWorkspace}
+                onSwitch={switchWorkspace}
+                onRename={renameWorkspace}
+                onDelete={deleteWorkspace}
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            <AlertsBell alerts={alerts} />
+            {(syncing || metaLoading) && (
+              <span className="flex items-center gap-1 text-xs text-on-surface-variant px-2">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                <span className="hidden sm:inline">
                   {metaLoading ? "Actualizando…" : "Sincronizando…"}
                 </span>
-              )}
-              <ThemeToggle />
-            </div>
+              </span>
+            )}
+            <ThemeToggle />
           </div>
         </header>
 
-        <main className="flex-1 px-4 md:px-6 py-6 flex flex-col gap-6 max-w-screen-xl">
+        <main className="flex-1 px-4 md:px-8 py-8 flex flex-col gap-6 max-w-[1440px] mx-auto w-full">
 
           {/* ── ANÁLISIS ── */}
           {mainTab === "analysis" && (

@@ -67,6 +67,7 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
       delta:           dp(spend, pSpend, compareEnabled),
       prevLabel:       prevLbl(pSpend, formatCurrencyCompact, compareEnabled),
       icon:            <DollarSign className="w-3.5 h-3.5" />,
+      msIcon:          "payments",
       higherIsBetter:  false,
     },
     {
@@ -75,6 +76,7 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
       delta:           revenue > 0 ? dp(revenue, pRevenue, compareEnabled) : null,
       prevLabel:       prevLbl(pRevenue, formatCurrencyCompact, compareEnabled),
       icon:            <TrendingUp className="w-3.5 h-3.5" />,
+      msIcon:          "trending_up",
       higherIsBetter:  true,
       accent:          true,
     },
@@ -84,6 +86,7 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
       delta:           roas > 0 ? dp(roas, pRoas, compareEnabled) : null,
       prevLabel:       prevLbl(pRoas, formatRoas, compareEnabled),
       icon:            <TrendingUp className="w-3.5 h-3.5" />,
+      msIcon:          "moving",
       higherIsBetter:  true,
     },
     {
@@ -92,6 +95,7 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
       delta:           purchases > 0 ? dp(purchases, pPurchases, compareEnabled) : null,
       prevLabel:       prevLbl(pPurchases, formatCompact, compareEnabled),
       icon:            <ShoppingCart className="w-3.5 h-3.5" />,
+      msIcon:          "shopping_cart",
       higherIsBetter:  true,
     },
     {
@@ -100,6 +104,7 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
       delta:           cpa > 0 ? dp(cpa, pCpa, compareEnabled) : null,
       prevLabel:       prevLbl(pCpa, formatCurrencyCompact, compareEnabled),
       icon:            <ShoppingCart className="w-3.5 h-3.5" />,
+      msIcon:          "price_change",
       higherIsBetter:  false,
     },
     {
@@ -108,6 +113,7 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
       delta:           ctr > 0 ? dp(ctr, pCtr, compareEnabled) : null,
       prevLabel:       prevLbl(pCtr, formatPercent, compareEnabled),
       icon:            <MousePointerClick className="w-3.5 h-3.5" />,
+      msIcon:          "ads_click",
       higherIsBetter:  true,
     },
   ];

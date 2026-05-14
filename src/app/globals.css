@@ -1,20 +1,81 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-primary: var(--primary);
+  /* ── Legacy semantic tokens (backward compat with existing components) ── */
+  --color-background:         var(--background);
+  --color-foreground:         var(--foreground);
+  --color-card:               var(--card);
+  --color-card-foreground:    var(--card-foreground);
+  --color-border:             var(--border);
+  --color-input:              var(--input);
+  --color-accent:             var(--accent);
+  --color-accent-foreground:  var(--accent-foreground);
+  --color-muted:              var(--muted);
+  --color-muted-foreground:   var(--muted-foreground);
+  --color-primary:            var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+
+  /* ── MD3 Surface tokens ─────────────────────────────────────────────── */
+  --color-surface:                   #051424;
+  --color-surface-dim:               #051424;
+  --color-surface-bright:            #2c3a4c;
+  --color-surface-tint:              #a4c9ff;
+  --color-surface-variant:           #273647;
+  --color-surface-container-lowest:  #010f1f;
+  --color-surface-container-low:     #0d1c2d;
+  --color-surface-container:         #122131;
+  --color-surface-container-high:    #1c2b3c;
+  --color-surface-container-highest: #273647;
+
+  /* ── MD3 On-surface ─────────────────────────────────────────────────── */
+  --color-on-surface:         #d4e4fa;
+  --color-on-surface-variant: #c1c7d3;
+  --color-on-background:      #d4e4fa;
+  --color-inverse-surface:    #d4e4fa;
+  --color-inverse-on-surface: #233143;
+
+  /* ── MD3 Outline ────────────────────────────────────────────────────── */
+  --color-outline:         #8b919d;
+  --color-outline-variant: #414751;
+
+  /* ── MD3 Primary ────────────────────────────────────────────────────── */
+  --color-primary-container:        #60a5fa;
+  --color-on-primary-container:     #003a6b;
+  --color-primary-fixed:            #d4e3ff;
+  --color-primary-fixed-dim:        #a4c9ff;
+  --color-on-primary:               #00315d;
+  --color-on-primary-fixed:         #001c39;
+  --color-on-primary-fixed-variant: #004883;
+  --color-inverse-primary:          #0060ac;
+
+  /* ── MD3 Secondary ──────────────────────────────────────────────────── */
+  --color-secondary:                  #45dfa4;
+  --color-on-secondary:               #003825;
+  --color-secondary-container:        #00bd85;
+  --color-on-secondary-container:     #00452e;
+  --color-secondary-fixed:            #68fcbf;
+  --color-secondary-fixed-dim:        #45dfa4;
+  --color-on-secondary-fixed:         #002114;
+  --color-on-secondary-fixed-variant: #005137;
+
+  /* ── MD3 Tertiary ───────────────────────────────────────────────────── */
+  --color-tertiary:                    #fabd34;
+  --color-on-tertiary:                 #412d00;
+  --color-tertiary-container:          #d19900;
+  --color-on-tertiary-container:       #4b3500;
+  --color-tertiary-fixed:              #ffdea4;
+  --color-tertiary-fixed-dim:          #fabd34;
+  --color-on-tertiary-fixed:           #261900;
+  --color-on-tertiary-fixed-variant:   #5d4200;
+
+  /* ── MD3 Error ──────────────────────────────────────────────────────── */
+  --color-error:              #ffb4ab;
+  --color-on-error:           #690005;
+  --color-error-container:    #93000a;
+  --color-on-error-container: #ffdad6;
 }
 
+/* ── Light mode (legacy) ──────────────────────────────────────────────────── */
 :root {
   --background: #f8fafc;
   --foreground: #0f172a;
@@ -30,21 +91,23 @@
   --primary-foreground: #ffffff;
 }
 
+/* ── Dark mode — aligned to the new Material Design 3 palette ─────────────── */
 .dark {
-  --background: #0a0f1e;
-  --foreground: #e2e8f0;
-  --card: #111827;
-  --card-foreground: #e2e8f0;
-  --border: #1e293b;
-  --input: #1e293b;
-  --accent: #1e293b;
-  --accent-foreground: #e2e8f0;
-  --muted: #1e293b;
-  --muted-foreground: #94a3b8;
-  --primary: #60a5fa;
-  --primary-foreground: #0a0f1e;
+  --background: #051424;
+  --foreground: #d4e4fa;
+  --card: #122131;
+  --card-foreground: #d4e4fa;
+  --border: #414751;
+  --input: #1c2b3c;
+  --accent: #1c2b3c;
+  --accent-foreground: #d4e4fa;
+  --muted: #1c2b3c;
+  --muted-foreground: #c1c7d3;
+  --primary: #a4c9ff;
+  --primary-foreground: #00315d;
 }
 
+/* ── Base ─────────────────────────────────────────────────────────────────── */
 * {
   box-sizing: border-box;
   border-color: var(--border);
@@ -53,11 +116,22 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  font-family: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Scrollbar */
+/* ── Material Symbols ─────────────────────────────────────────────────────── */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  user-select: none;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
+/* ── Scrollbar ────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }

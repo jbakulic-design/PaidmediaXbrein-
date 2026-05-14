@@ -4,22 +4,24 @@ import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
 export interface KPICardProps {
-  label:           string;
-  value:           string;
-  /** Percentage change vs previous period (positive or negative) */
-  delta?:          number | null;
-  /** Short label under the value, e.g. "vs. $1.2K" */
-  prevLabel?:      string;
-  icon?:           ReactNode;
+  label:            string;
+  value:            string;
+  /** Percentage delta vs previous period */
+  delta?:           number | null;
+  /** Sub-label shown below the delta, e.g. "Anterior: $1.2K" */
+  prevLabel?:       string;
+  /** Legacy Lucide icon (kept for compat, not rendered visually) */
+  icon?:            ReactNode;
+  /** Material Symbol name for the ghost icon in the top-right corner */
+  msIcon?:          string;
   /**
-   * true  = higher is better (ROAS, ingresos, leads, conversaciones)
-   * false = lower is better  (CPL, CPA, gasto, costo/conversación)
-   * Default: true
+   * true  = higher is better (ROAS, leads, revenue)
+   * false = lower is better  (CPL, CPA, spend)
    */
-  higherIsBetter?: boolean;
-  size?:           "sm" | "md" | "lg";
-  accent?:         boolean;
-  className?:      string;
+  higherIsBetter?:  boolean;
+  size?:            "sm" | "md" | "lg";
+  accent?:          boolean;
+  className?:       string;
 }
 
 export function KPICard({
@@ -27,7 +29,7 @@ export function KPICard({
   value,
   delta,
   prevLabel,
-  icon,
+  msIcon,
   higherIsBetter = true,
   size = "md",
   accent = false,
@@ -36,67 +38,78 @@ export function KPICard({
   const hasDelta  = delta !== undefined && delta !== null;
   const isGood    = hasDelta ? (higherIsBetter ? delta! >= 0 : delta! <= 0) : null;
   const deltaAbs  = hasDelta ? Math.abs(delta!) : null;
-  const arrow     = hasDelta ? (delta! > 0 ? "▲" : delta! < 0 ? "▼" : "—") : null;
+
+  // Map to Material Symbol icon names
+  const arrowIcon = hasDelta
+    ? delta! > 0
+      ? "arrow_upward"
+      : delta! < 0
+        ? "arrow_downward"
+        : "horizontal_rule"
+    : null;
 
   return (
     <div
       className={cn(
-        "rounded-xl border flex flex-col gap-1.5 transition-all",
-        size === "lg" ? "p-5" : size === "sm" ? "p-3" : "p-3.5",
-        accent && "border-blue-500/25",
+        "bg-surface-container-low border border-outline-variant rounded-xl flex flex-col gap-2 relative overflow-hidden group hover:border-primary/50 transition-colors",
+        size === "lg" ? "p-6" : size === "sm" ? "p-4" : "p-5",
+        accent && "border-primary/30 bg-surface-container",
         className
       )}
-      style={{
-        background:   accent ? "color-mix(in srgb, var(--card) 85%, #3b82f610)" : "var(--card)",
-        borderColor:  accent ? undefined : "var(--border)",
-      }}
     >
-      {/* Label row */}
-      <div className="flex items-center justify-between gap-1 min-w-0">
-        <span
-          className="text-xs font-medium leading-tight truncate"
-          style={{ color: "var(--muted-foreground)" }}
-          title={label}
-        >
-          {label}
-        </span>
-        {icon && (
-          <span className="shrink-0 opacity-35 w-3.5 h-3.5" style={{ color: "var(--muted-foreground)" }}>
-            {icon}
-          </span>
-        )}
-      </div>
-
-      {/* Value + delta */}
-      <div className="flex items-end gap-1.5 flex-wrap min-w-0">
-        <span
-          className={cn(
-            "font-bold leading-none truncate",
-            size === "lg" ? "text-[2rem]" : size === "sm" ? "text-lg" : "text-2xl"
-          )}
-          style={{ color: "var(--foreground)" }}
-          title={value}
-        >
-          {value}
-        </span>
-
-        {hasDelta && (
+      {/* Ghost icon — top-right corner */}
+      {msIcon && (
+        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none select-none">
           <span
-            className={cn(
-              "text-[11px] font-bold mb-0.5 flex items-center gap-0.5 shrink-0",
-              isGood === true  && "text-emerald-400",
-              isGood === false && "text-red-400",
-              isGood === null  && "text-muted-foreground"
-            )}
+            className="material-symbols-outlined text-primary"
+            style={{ fontSize: "44px", lineHeight: 1 }}
           >
-            {arrow} {deltaAbs!.toFixed(1)}%
+            {msIcon}
           </span>
+        </div>
+      )}
+
+      {/* Label */}
+      <span className="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant leading-tight truncate">
+        {label}
+      </span>
+
+      {/* Value */}
+      <span
+        className={cn(
+          "font-bold text-on-surface leading-none truncate",
+          size === "lg" ? "text-3xl" : size === "sm" ? "text-xl" : "text-2xl"
         )}
-      </div>
+        title={value}
+      >
+        {value}
+      </span>
+
+      {/* Delta row */}
+      {hasDelta && (
+        <div
+          className={cn(
+            "flex items-center gap-1 text-[11px] font-semibold",
+            isGood === true  && "text-secondary",
+            isGood === false && "text-error",
+            isGood === null  && "text-on-surface-variant"
+          )}
+        >
+          {arrowIcon && (
+            <span
+              className="material-symbols-outlined select-none"
+              style={{ fontSize: "14px", lineHeight: 1 }}
+            >
+              {arrowIcon}
+            </span>
+          )}
+          {deltaAbs!.toFixed(1)}% vs período anterior
+        </div>
+      )}
 
       {/* Previous-period sub-label */}
       {prevLabel && (
-        <span className="text-[11px] truncate" style={{ color: "var(--muted-foreground)" }}>
+        <span className="text-[11px] text-on-surface-variant truncate">
           {prevLabel}
         </span>
       )}

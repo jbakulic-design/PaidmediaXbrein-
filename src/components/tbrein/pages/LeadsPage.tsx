@@ -72,6 +72,7 @@ export function LeadsPage({ data, prevData, compareEnabled }: Props) {
       delta:          dp(spend, pSpend, compareEnabled),
       prevLabel:      prevLbl(pSpend, formatCurrencyCompact, compareEnabled),
       icon:           <DollarSign className="w-3.5 h-3.5" />,
+      msIcon:         "payments",
       higherIsBetter: false,
     },
     {
@@ -80,6 +81,7 @@ export function LeadsPage({ data, prevData, compareEnabled }: Props) {
       delta:          leads > 0 ? dp(leads, pLeads, compareEnabled) : null,
       prevLabel:      prevLbl(pLeads, formatCompact, compareEnabled),
       icon:           <Users className="w-3.5 h-3.5" />,
+      msIcon:         "group",
       higherIsBetter: true,
       accent:         true,
     },
@@ -89,6 +91,7 @@ export function LeadsPage({ data, prevData, compareEnabled }: Props) {
       delta:          cpl > 0 ? dp(cpl, pCpl, compareEnabled) : null,
       prevLabel:      prevLbl(pCpl, formatCurrencyCompact, compareEnabled),
       icon:           <DollarSign className="w-3.5 h-3.5" />,
+      msIcon:         "price_change",
       higherIsBetter: false,
     },
     {
@@ -97,6 +100,7 @@ export function LeadsPage({ data, prevData, compareEnabled }: Props) {
       delta:          ctr > 0 ? dp(ctr, pCtr, compareEnabled) : null,
       prevLabel:      prevLbl(pCtr, formatPercent, compareEnabled),
       icon:           <MousePointerClick className="w-3.5 h-3.5" />,
+      msIcon:         "ads_click",
       higherIsBetter: true,
     },
     {
@@ -105,6 +109,7 @@ export function LeadsPage({ data, prevData, compareEnabled }: Props) {
       delta:          dp(impressions, pImpressions, compareEnabled),
       prevLabel:      prevLbl(pImpressions, formatCompact, compareEnabled),
       icon:           <LineChart className="w-3.5 h-3.5" />,
+      msIcon:         "show_chart",
       higherIsBetter: true,
     },
     {
@@ -113,6 +118,7 @@ export function LeadsPage({ data, prevData, compareEnabled }: Props) {
       delta:          frequency > 0 ? dp(frequency, pFrequency, compareEnabled) : null,
       prevLabel:      prevLbl(pFrequency, (v) => v.toFixed(2), compareEnabled),
       icon:           <Zap className="w-3.5 h-3.5" />,
+      msIcon:         "bolt",
       higherIsBetter: false,
     },
   ];

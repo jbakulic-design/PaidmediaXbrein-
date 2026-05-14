@@ -142,8 +142,8 @@ export function MetricTimeline({
 }: BaseProps) {
   const [gran, setGran] = useState<Granularity>(defaultGran);
   const { theme } = useTheme();
-  const gridColor = theme === "dark" ? "#1e293b" : "#e2e8f0";
-  const textColor = theme === "dark" ? "#94a3b8" : "#64748b";
+  const gridColor = theme === "dark" ? "#414751" : "#e2e8f0";
+  const textColor = theme === "dark" ? "#c1c7d3" : "#64748b";
 
   const fmt = useCallback(
     (v: number) => (formatValue ? formatValue(v) : v.toFixed(1)),
