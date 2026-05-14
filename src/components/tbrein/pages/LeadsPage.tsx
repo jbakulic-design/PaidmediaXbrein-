@@ -21,29 +21,25 @@ interface Props {
   compareEnabled: boolean;
 }
 
-/** Filter rows to lead-objective campaigns only.
- *  Falls back to campaigns with custom conversions (pixel form submissions)
- *  when no native lead data is found. */
+/** Returns all campaigns relevant to the leads tab.
+ *  A campaign is "lead-relevant" if it has a lead objective, native leads,
+ *  or custom conversions (pixel form events). We merge all three sets so
+ *  accounts with mixed tracking (some native leads + some custom conversions)
+ *  don't drop any campaigns. */
 function filterLeads(rows: SeguimientoRow[]): SeguimientoRow[] {
-  const byObjective = rows.filter((r) => isLeadObjective(r.objective));
+  const byObjective  = rows.filter((r) => isLeadObjective(r.objective));
+  const withConvData = rows.filter((r) => r.leads > 0 || r.customConversions > 0);
 
-  // Happy path: objective-filtered rows have actual leads
-  if (byObjective.length > 0 && byObjective.some((r) => r.leads > 0)) {
-    return byObjective;
-  }
+  // Union: objective-matched + any with real lead/conv data (dedup by campaignId)
+  const merged = [
+    ...new Map(
+      [...byObjective, ...withConvData].map((r) => [r.campaignId, r])
+    ).values(),
+  ];
 
-  // Fallback 1: any row with native lead data, regardless of objective label
-  const withLeads = rows.filter((r) => r.leads > 0);
-  if (withLeads.length > 0) return withLeads;
+  if (merged.length > 0) return merged;
 
-  // Fallback 2: rows with custom conversions (e.g. pixel form-submit events)
-  const withCustom = rows.filter((r) => r.customConversions > 0);
-  if (withCustom.length > 0) return withCustom;
-
-  // Fallback 3: objective match (even if 0 leads)
-  if (byObjective.length > 0) return byObjective;
-
-  // Last resort: show everything
+  // Nothing found at all: show everything rather than empty screen
   return rows;
 }
 

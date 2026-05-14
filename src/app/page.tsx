@@ -260,7 +260,7 @@ export default function Dashboard() {
         campaignType={campaignType}
         onCampaignType={setCampaignType}
         onLogout={logout}
-        metaQuick={earlyToken ? {
+        metaQuick={earlyToken && mainTab !== "seguimiento" ? {
           accountName: earlyAccounts.find((a) => a.id === selectedAccountId)?.name ?? metaConnection?.accountName ?? "",
           accountId: selectedAccountId,
           accounts: earlyAccounts,
