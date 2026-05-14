@@ -238,47 +238,60 @@ const STANDARD_ACTION_TYPES = new Set([
 /**
  * Sums every custom-conversion action type not already covered by standard fields.
  * Custom conversions arrive as: offsite_conversion.custom.{ID}
- * or offsite_conversion.fb_pixel_custom.{ID}
+ *
+ * Meta returns MULTIPLE entries for the same action_type when multiple
+ * action_attribution_windows are requested. We collect the MAX value per
+ * distinct type (to pick the 7d_click value, not the 1d_view one), then
+ * sum across all distinct custom conversion types.
  */
 function getCustomConversions(
   arr: { action_type: string; value: string }[] | undefined
 ): number {
   if (!arr) return 0;
-  let total = 0;
-  const seen = new Set<string>();
+  // Max value per distinct custom conversion type
+  const maxPerType = new Map<string, number>();
   for (const item of arr) {
     if (STANDARD_ACTION_TYPES.has(item.action_type)) continue;
-    if (seen.has(item.action_type)) continue;
     if (
       item.action_type.startsWith("offsite_conversion.custom.") ||
       item.action_type.startsWith("offsite_conversion.fb_pixel_custom") ||
-      item.action_type.startsWith("offsite_conversion.fb_pixel_") || // any non-standard pixel event
+      item.action_type.startsWith("offsite_conversion.fb_pixel_") ||
       item.action_type.includes("custom_conversion") ||
       item.action_type.includes("custom_event")
     ) {
-      seen.add(item.action_type);
-      total += parseFloat(item.value) || 0;
+      const val = parseFloat(item.value) || 0;
+      const prev = maxPerType.get(item.action_type) ?? 0;
+      if (val > prev) maxPerType.set(item.action_type, val);
     }
   }
+  // Sum the max across all distinct custom types
+  let total = 0;
+  for (const val of maxPerType.values()) total += val;
   return total;
 }
 
 /**
  * Returns the MAXIMUM value found across all matching action types.
- * Using max (not first-match) avoids the case where a minor action type
- * matches with value 1 while the real metric is in another type with value 45.
- * Using max (not sum) avoids double-counting when types overlap.
+ *
+ * Meta returns multiple entries for the same action_type when multiple
+ * action_attribution_windows are requested (one entry per window).
+ * Using arr.find() only gets the FIRST entry, which may be the smallest window
+ * (e.g. 1d_view = 1 instead of 7d_click = 100).
+ *
+ * This function iterates ALL entries and takes the MAX across both:
+ *  - Different action types that map to the same metric (avoids first-match bias)
+ *  - Multiple entries of the same action type (handles per-window duplicates)
  */
 function getAction(
   arr: { action_type: string; value: string }[] | undefined,
   ...types: string[]
 ): number {
   if (!arr) return 0;
+  const typeSet = new Set(types);
   let best = 0;
-  for (const t of types) {
-    const found = arr.find((a) => a.action_type === t);
-    if (found) {
-      const val = parseFloat(found.value) || 0;
+  for (const item of arr) {
+    if (typeSet.has(item.action_type)) {
+      const val = parseFloat(item.value) || 0;
       if (val > best) best = val;
     }
   }
