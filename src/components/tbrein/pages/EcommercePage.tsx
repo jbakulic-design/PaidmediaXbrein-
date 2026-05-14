@@ -40,6 +40,11 @@ function prevLbl(prev: number | undefined, fmt: (v: number) => string, enabled: 
 
 export function EcommercePage({ data, prevData, compareEnabled }: Props) {
   const c = data.campaigns;
+  // Filter adsets and timeSeries to the same campaign IDs present in campaigns,
+  // ensuring KPI totals, charts, and table all reflect exactly the same data set.
+  const campaignIdSet = new Set(c.map((r) => r.campaignId));
+  const as = data.adsets.filter((r) => campaignIdSet.has(r.campaignId));
+  const ts = data.timeSeries.filter((r) => campaignIdSet.has(r.campaignId));
   const p = prevData?.campaigns;
 
   // ── Totals ──────────────────────────────────────────────────────────────
@@ -80,9 +85,13 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
   const pCustomCpa    = p ? aggCustomCPA(p)         : undefined;
   const pCustomRoas   = p ? aggCustomROAS(p)        : undefined;
 
-  const pEffConversions = useCustomConvs ? pCustomConvs : pPurchases;
-  const pEffCpa         = useCustomConvs ? pCustomCpa   : pCpa;
-  const pEffRoas        = useCustomConvs ? pCustomRoas  : pRoas;
+  // Determine which metric type the PREVIOUS period used independently so that
+  // deltas compare the same kind of metric. If the account switched tracking
+  // method between periods the delta will show "—" (correct: not comparable).
+  const prevUseCustomConvs = (pPurchases ?? 0) === 0 && (pCustomConvs ?? 0) > 0;
+  const pEffConversions = prevUseCustomConvs ? pCustomConvs : pPurchases;
+  const pEffCpa         = prevUseCustomConvs ? pCustomCpa   : pCpa;
+  const pEffRoas        = prevUseCustomConvs ? pCustomRoas  : pRoas;
 
   // ── Top 6 KPIs (3×2 grid) ───────────────────────────────────────────────
   const topKpis: KPIDef[] = [
@@ -316,7 +325,7 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
       {/* ─── Gasto en el tiempo ───────────────────────────────────────────── */}
       <section>
         <MetricTimeline
-          data={data.timeSeries}
+          data={ts}
           title="Gasto en el tiempo"
           aggregateFn={aggSpendFn}
           formatValue={fmtCurrency}
@@ -331,7 +340,7 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
       {effRoas > 0 && (
         <section>
           <MetricTimeline
-            data={data.timeSeries}
+            data={ts}
             title="ROAS en el tiempo"
             aggregateFn={aggRoasFn}
             formatValue={fmtRoasNum}
@@ -347,7 +356,7 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
       {effConversions > 0 && (
         <section>
           <MetricTimeline
-            data={data.timeSeries}
+            data={ts}
             title="CPA en el tiempo"
             aggregateFn={aggCpaFn}
             formatValue={fmtCurrency}
@@ -363,7 +372,7 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
       {useCustomConvs && (
         <section>
           <MetricTimeline
-            data={data.timeSeries}
+            data={ts}
             title="Conversiones en el tiempo"
             aggregateFn={aggCustomConvsFn}
             formatValue={fmtCount}
@@ -378,7 +387,7 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
       {/* ─── Comparativa de campañas ──────────────────────────────────────── */}
       <section>
         <SeguimientoTable
-          rows={data.campaigns}
+          rows={c}
           mode="ecommerce"
           title="Comparativa de campañas"
         />
@@ -387,7 +396,7 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
       {/* ─── Comparativa de ad sets ───────────────────────────────────────── */}
       <section>
         <SeguimientoTable
-          rows={data.adsets}
+          rows={as}
           mode="ecommerce"
           isAdset
           title="Comparativa de conjuntos de anuncios"
@@ -396,7 +405,7 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
 
       {/* ─── Diagnóstico (colapsado por defecto) ─────────────────────────── */}
       <section>
-        <ActionTypesDebug rows={data.campaigns} />
+        <ActionTypesDebug rows={c} />
       </section>
 
     </div>

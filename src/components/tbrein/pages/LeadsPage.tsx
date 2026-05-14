@@ -99,8 +99,15 @@ export function LeadsPage({ data, prevData, compareEnabled }: Props) {
   const pFrequency    = p ? aggFrequency(p)   : undefined;
   const pCustomConvs  = p ? aggCustomConversions(p) : undefined;
   const pCustomCpl    = p ? aggCustomCPA(p)         : undefined;
-  const pEffLeads     = useCustomConvs ? pCustomConvs : pLeads;
-  const pEffCpl       = useCustomConvs ? pCustomCpl   : pCpl;
+  // Determine which metric type the PREVIOUS period used independently.
+  // If we always use current-period's useCustomConvs to pick prev metrics,
+  // an account that switched tracking method mid-way would compare apples to
+  // oranges and show a wrong delta. Using the prev period's own flag means:
+  // - same method both periods → delta is meaningful
+  // - different methods → delta shows "—" (correct: not comparable)
+  const prevUseCustomConvs = (pLeads ?? 0) === 0 && (pCustomConvs ?? 0) > 0;
+  const pEffLeads = prevUseCustomConvs ? pCustomConvs : pLeads;
+  const pEffCpl   = prevUseCustomConvs ? pCustomCpl   : pCpl;
 
   // ── Top 6 KPI grid ───────────────────────────────────────────────────────
   const topKpis: KPIDef[] = [

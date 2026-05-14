@@ -238,45 +238,68 @@ const STANDARD_ACTION_TYPES = new Set([
 ]);
 
 /**
- * Sums every custom-conversion action type not already covered by standard fields.
- * Custom conversions arrive as: offsite_conversion.custom.{ID}
+ * Returns { count, value } for the best-matching custom conversion type.
  *
- * Meta returns MULTIPLE entries for the same action_type when multiple
- * action_attribution_windows are requested. We collect the MAX value per
- * distinct type (to pick the 7d_click value, not the 1d_view one), then
- * sum across all distinct custom conversion types.
+ * WHY MAX (not sum):
+ *   A single campaign row from Meta often contains entries for MULTIPLE
+ *   custom conversion types simultaneously (e.g. "contact_form" + "cliente_potencial").
+ *   These are NOT independent events — they usually represent the same audience
+ *   counted under different labels. Summing would double-count. Instead we take
+ *   the type with the highest COUNT as the authoritative one, then look up
+ *   its associated revenue from action_values using the SAME type — so count
+ *   and value always correspond to the same conversion event.
+ *
+ * WHY pair (not two independent MAXes):
+ *   If count-MAX comes from type X (=100 conversions) but value-MAX comes from
+ *   type Y (=$5000 revenue from a different/noisier event), the CPA would be
+ *   calculated as spend/100 while revenue shows $5000 — inconsistent.
+ *   Using the same winning type for both avoids this mismatch.
+ *
+ * Meta returns MULTIPLE entries per action_type (one per attribution window).
+ * We collect MAX per type first to resolve window duplicates, then find the
+ * type with the highest count.
  */
-function getCustomConversions(
-  arr: { action_type: string; value: string }[] | undefined
-): number {
-  if (!arr) return 0;
-  // Collect max value per distinct custom conversion type
-  // (Meta returns multiple entries per type when multiple attribution windows are requested)
-  const maxPerType = new Map<string, number>();
-  for (const item of arr) {
+function getCustomConversionPair(
+  actions:      { action_type: string; value: string }[] | undefined,
+  actionValues: { action_type: string; value: string }[] | undefined,
+): { count: number; value: number } {
+  if (!actions) return { count: 0, value: 0 };
+
+  // Step 1: max count per distinct custom conversion type (resolves window dupes)
+  const maxCountPerType = new Map<string, number>();
+  for (const item of actions) {
     if (STANDARD_ACTION_TYPES.has(item.action_type)) continue;
-    // Only match specific named custom conversions (offsite_conversion.custom.{ID}).
-    // Exclude generic aggregate types like offsite_conversion.fb_pixel_custom which
-    // count ALL pixel events combined and produce inflated numbers.
+    // Only specific named custom conversions — exclude fb_pixel_custom (aggregate counter).
     if (
       item.action_type.startsWith("offsite_conversion.custom.") ||
       item.action_type.includes("custom_conversion") ||
       item.action_type.includes("custom_event")
     ) {
       const val = parseFloat(item.value) || 0;
-      const prev = maxPerType.get(item.action_type) ?? 0;
-      if (val > prev) maxPerType.set(item.action_type, val);
+      const prev = maxCountPerType.get(item.action_type) ?? 0;
+      if (val > prev) maxCountPerType.set(item.action_type, val);
     }
   }
-  // Return the MAX across all distinct custom conversion types (not sum).
-  // Different campaigns in the same account track different custom conversions.
-  // Summing them would double-count campaigns that have multiple conversion types
-  // active simultaneously (e.g. "contact form" + "cliente potencial" both firing).
-  let best = 0;
-  for (const val of maxPerType.values()) {
-    if (val > best) best = val;
+
+  // Step 2: find winning type by highest count
+  let bestType = "";
+  let bestCount = 0;
+  for (const [type, count] of maxCountPerType) {
+    if (count > bestCount) { bestCount = count; bestType = type; }
   }
-  return best;
+
+  if (bestCount === 0) return { count: 0, value: 0 };
+
+  // Step 3: look up revenue for the SAME winning type (consistent pair)
+  const convValue = actionValues ? getAction(actionValues, bestType) : 0;
+  return { count: bestCount, value: convValue };
+}
+
+/** Kept for backwards-compat — returns only the count from the pair. */
+function getCustomConversions(
+  arr: { action_type: string; value: string }[] | undefined
+): number {
+  return getCustomConversionPair(arr, undefined).count;
 }
 
 /**
@@ -356,19 +379,23 @@ function parseRow(
   // that report under a different action type), fall back to the MAX heuristic
   // across all custom conversion types.
   const targetConvId = convIdMap?.get(cid);
-  const customConversions = (() => {
+  // When we know the exact custom conversion ID this campaign optimizes for,
+  // use it directly (count + matching value). If it returns 0 (e.g. Tally /
+  // server-side integrations that report under a different action type), fall
+  // back to getCustomConversionPair which finds the best type AND returns
+  // count+value from that SAME type (avoids the old mismatch where count-MAX
+  // and value-MAX could come from different conversion types).
+  const { count: customConversions, value: customConversionValue } = (() => {
     if (targetConvId) {
-      const specific = getAction(r.actions, `offsite_conversion.custom.${targetConvId}`);
-      if (specific > 0) return specific;
+      const count = getAction(r.actions, `offsite_conversion.custom.${targetConvId}`);
+      if (count > 0) {
+        return {
+          count,
+          value: getAction(r.action_values, `offsite_conversion.custom.${targetConvId}`),
+        };
+      }
     }
-    return getCustomConversions(r.actions);
-  })();
-  const customConversionValue = (() => {
-    if (targetConvId) {
-      const specific = getAction(r.action_values, `offsite_conversion.custom.${targetConvId}`);
-      if (specific > 0) return specific;
-    }
-    return getCustomConversions(r.action_values);
+    return getCustomConversionPair(r.actions, r.action_values);
   })();
 
   return {
