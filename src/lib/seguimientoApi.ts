@@ -342,9 +342,22 @@ const INSIGHT_FIELDS = [
 function parseRow(
   r: RawInsight,
   objMap: Map<string, string>,
-  level: "campaign" | "adset"
+  level: "campaign" | "adset",
+  /** Maps campaign_id → custom_conversion_id from adset promoted_object */
+  convIdMap?: Map<string, string>
 ): SeguimientoRow {
   const cid = r.campaign_id ?? "";
+
+  // If we know the specific custom conversion this campaign optimizes for,
+  // use it directly. Otherwise fall back to the MAX heuristic.
+  const targetConvId = convIdMap?.get(cid);
+  const customConversions = targetConvId
+    ? getAction(r.actions,  `offsite_conversion.custom.${targetConvId}`)
+    : getCustomConversions(r.actions);
+  const customConversionValue = targetConvId
+    ? getAction(r.action_values, `offsite_conversion.custom.${targetConvId}`)
+    : getCustomConversions(r.action_values);
+
   return {
     campaignId:    cid,
     campaignName:  r.campaign_name ?? "Campaña",
@@ -398,8 +411,8 @@ function parseRow(
       "messaging_conversation_started_7d",
       "messaging_conversation_started_1d"
     ),
-    customConversions:     getCustomConversions(r.actions),
-    customConversionValue: getCustomConversions(r.action_values),
+    customConversions:     customConversions,
+    customConversionValue: customConversionValue,
     rawActionTypes: (r.actions ?? [])
       .filter((a) => parseFloat(a.value) > 0)
       .map((a) => a.action_type),
@@ -438,11 +451,15 @@ export async function fetchSeguimientoPayload(
   const id = accountId.startsWith("act_") ? accountId : `act_${accountId}`;
   const t = `access_token=${token}`;
 
-  // Fetch in parallel: objectives map + all insight levels
-  const [rawObjectives, rawCampaigns, rawAdsets, rawTimeSeries] =
+  // Fetch in parallel: objectives map + adset promoted_object + all insight levels
+  const [rawObjectives, rawAdsetsMeta, rawCampaigns, rawAdsets, rawTimeSeries] =
     await Promise.all([
       fetchPaged<{ id: string; objective?: string }>(
         `${GRAPH}/${id}/campaigns?fields=id,objective&limit=200&${t}`
+      ),
+      // promoted_object tells us which custom_conversion_id each adset optimizes for
+      fetchPaged<{ id: string; campaign_id?: string; promoted_object?: { custom_conversion_id?: string } }>(
+        `${GRAPH}/${id}/adsets?fields=id,campaign_id,promoted_object&limit=200&${t}`
       ),
       fetchInsights(token, accountId, range, "campaign"),
       fetchInsights(token, accountId, range, "adset"),
@@ -454,9 +471,20 @@ export async function fetchSeguimientoPayload(
     if (c.objective) objMap.set(c.id, c.objective);
   }
 
+  // Map campaign_id → custom_conversion_id using adset promoted_object.
+  // When multiple adsets in the same campaign have different conversion IDs
+  // (uncommon), the last one wins — in practice all adsets share the same ID.
+  const convIdMap = new Map<string, string>();
+  for (const as of rawAdsetsMeta) {
+    const convId = as.promoted_object?.custom_conversion_id;
+    if (convId && as.campaign_id) {
+      convIdMap.set(as.campaign_id, convId);
+    }
+  }
+
   return {
-    campaigns:  rawCampaigns.map((r) => parseRow(r, objMap, "campaign")),
-    adsets:     rawAdsets.map((r)    => parseRow(r, objMap, "adset")),
-    timeSeries: rawTimeSeries.map((r) => parseRow(r, objMap, "campaign")),
+    campaigns:  rawCampaigns.map((r) => parseRow(r, objMap, "campaign", convIdMap)),
+    adsets:     rawAdsets.map((r)    => parseRow(r, objMap, "adset",    convIdMap)),
+    timeSeries: rawTimeSeries.map((r) => parseRow(r, objMap, "campaign", convIdMap)),
   };
 }
