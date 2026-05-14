@@ -223,7 +223,9 @@ function pn(v?: string): number {
  * Custom conversions that match these are skipped to avoid double-counting.
  */
 const STANDARD_ACTION_TYPES = new Set([
-  "lead", "onsite_conversion.lead_grouped", "leadgen_grouped", "leadgen.grouped",
+  "lead", "onsite_conversion.lead_grouped", "onsite_conversion.lead",
+  "leadgen_grouped", "leadgen.grouped",
+  "onsite_web_lead",
   "offsite_conversion.fb_pixel_lead", "contact_total", "complete_registration",
   "purchase", "offsite_conversion.fb_pixel_purchase", "omni_purchase",
   "offsite_conversion.fb_pixel_complete_registration",
@@ -376,8 +378,11 @@ function parseRow(
       // Native Lead Gen Forms
       "lead",
       "onsite_conversion.lead_grouped",
+      "onsite_conversion.lead",        // individual lead form submission (not grouped)
       "leadgen_grouped",
       "leadgen.grouped",
+      // Web leads (pixel or onsite)
+      "onsite_web_lead",               // Meta onsite web lead event
       // Pixel-based lead events (website landing pages)
       "offsite_conversion.fb_pixel_lead",
       // Other lead-type conversions
