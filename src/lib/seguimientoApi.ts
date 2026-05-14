@@ -248,7 +248,8 @@ function getCustomConversions(
   arr: { action_type: string; value: string }[] | undefined
 ): number {
   if (!arr) return 0;
-  // Max value per distinct custom conversion type
+  // Collect max value per distinct custom conversion type
+  // (Meta returns multiple entries per type when multiple attribution windows are requested)
   const maxPerType = new Map<string, number>();
   for (const item of arr) {
     if (STANDARD_ACTION_TYPES.has(item.action_type)) continue;
@@ -264,10 +265,15 @@ function getCustomConversions(
       if (val > prev) maxPerType.set(item.action_type, val);
     }
   }
-  // Sum the max across all distinct custom types
-  let total = 0;
-  for (const val of maxPerType.values()) total += val;
-  return total;
+  // Return the MAX across all distinct custom conversion types (not sum).
+  // Different campaigns in the same account track different custom conversions.
+  // Summing them would double-count campaigns that have multiple conversion types
+  // active simultaneously (e.g. "contact form" + "cliente potencial" both firing).
+  let best = 0;
+  for (const val of maxPerType.values()) {
+    if (val > best) best = val;
+  }
+  return best;
 }
 
 /**
