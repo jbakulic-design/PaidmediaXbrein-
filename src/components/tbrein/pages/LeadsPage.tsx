@@ -19,11 +19,26 @@ interface Props {
   compareEnabled: boolean;
 }
 
-/** Filter rows to lead-objective campaigns only */
+/** Filter rows to lead-objective campaigns only.
+ *  Falls back to campaigns that actually have lead data if the
+ *  objective-based filter yields rows with 0 leads. */
 function filterLeads(rows: SeguimientoRow[]): SeguimientoRow[] {
-  const filtered = rows.filter((r) => isLeadObjective(r.objective));
-  // Fallback: if no campaign has an objective tag (data gap), show all
-  return filtered.length > 0 ? filtered : rows;
+  const byObjective = rows.filter((r) => isLeadObjective(r.objective));
+
+  // Happy path: objective-filtered rows have actual leads
+  if (byObjective.length > 0 && byObjective.some((r) => r.leads > 0)) {
+    return byObjective;
+  }
+
+  // Fallback 1: any row with lead data, regardless of objective label
+  const withData = rows.filter((r) => r.leads > 0);
+  if (withData.length > 0) return withData;
+
+  // Fallback 2: objective match (even if 0 leads)
+  if (byObjective.length > 0) return byObjective;
+
+  // Last resort: show everything
+  return rows;
 }
 
 function dp(curr: number, prev: number | undefined, enabled: boolean) {
@@ -47,7 +62,10 @@ export function LeadsPage({ data, prevData, compareEnabled }: Props) {
   const ts = filterLeads(data.timeSeries);
   const p  = prevData ? filterLeads(prevData.campaigns) : undefined;
 
-  const noLeadObjectives = data.campaigns.length > 0 && c.length === data.campaigns.length;
+  // Show notice only when no campaign has a lead objective tag at all
+  const noLeadObjectives =
+    data.campaigns.length > 0 &&
+    data.campaigns.every((r) => !isLeadObjective(r.objective));
 
   // ── Totals ──────────────────────────────────────────────────────────────
   const spend       = aggSpend(c);
@@ -185,18 +203,8 @@ export function LeadsPage({ data, prevData, compareEnabled }: Props) {
           formatValue={fmtCurrency}
           yTickFmt={fmtCurrency}
           color="#34d399"
-        />
-      </section>
-
-      {/* ─── CPL por campaña (multi-línea) ──────────────────────────────── */}
-      <section>
-        <MetricTimeline
-          data={ts}
-          title="CPL por campaña"
-          aggregateFn={aggCplFn}
-          formatValue={fmtCurrency}
-          yTickFmt={fmtCurrency}
-          multiLine
+          allowMAToggle
+          allowViewToggle
         />
       </section>
 
@@ -209,6 +217,8 @@ export function LeadsPage({ data, prevData, compareEnabled }: Props) {
           formatValue={fmtCount}
           yTickFmt={fmtCount}
           color="#60a5fa"
+          allowMAToggle
+          allowViewToggle
         />
       </section>
 
@@ -221,6 +231,8 @@ export function LeadsPage({ data, prevData, compareEnabled }: Props) {
           formatValue={fmtCurrency}
           yTickFmt={fmtCurrency}
           color="#a78bfa"
+          allowMAToggle
+          allowViewToggle
         />
       </section>
 

@@ -19,11 +19,26 @@ interface Props {
   compareEnabled: boolean;
 }
 
-/** Filter rows to messages/conversations-objective campaigns only */
+/** Filter rows to messages/conversations-objective campaigns only.
+ *  Falls back to campaigns that actually have conversation data if the
+ *  objective-based filter yields rows with 0 conversations (e.g. Expren). */
 function filterConversations(rows: SeguimientoRow[]): SeguimientoRow[] {
-  const filtered = rows.filter((r) => isMessagesObjective(r.objective));
-  // Fallback: if no campaign has a messages objective, show all
-  return filtered.length > 0 ? filtered : rows;
+  const byObjective = rows.filter((r) => isMessagesObjective(r.objective));
+
+  // Happy path: objective-filtered rows have actual conversations
+  if (byObjective.length > 0 && byObjective.some((r) => r.conversations > 0)) {
+    return byObjective;
+  }
+
+  // Fallback 1: any row with conversation data, regardless of objective label
+  const withData = rows.filter((r) => r.conversations > 0);
+  if (withData.length > 0) return withData;
+
+  // Fallback 2: objective match (even if 0 conversations — at least shows correct set)
+  if (byObjective.length > 0) return byObjective;
+
+  // Last resort: show everything
+  return rows;
 }
 
 function dp(curr: number, prev: number | undefined, enabled: boolean) {
@@ -47,8 +62,10 @@ export function ConversationsPage({ data, prevData, compareEnabled }: Props) {
   const ts = filterConversations(data.timeSeries);
   const p  = prevData ? filterConversations(prevData.campaigns) : undefined;
 
+  // Show notice only when we fell back to non-objective-matched rows
   const noMessagesObjectives =
-    data.campaigns.length > 0 && c.length === data.campaigns.length;
+    data.campaigns.length > 0 &&
+    data.campaigns.every((r) => !isMessagesObjective(r.objective));
 
   // ── Totals ───────────────────────────────────────────────────────────────
   const spend         = aggSpend(c);
@@ -188,18 +205,8 @@ export function ConversationsPage({ data, prevData, compareEnabled }: Props) {
           formatValue={fmtCurrency}
           yTickFmt={fmtCurrency}
           color="#34d399"
-        />
-      </section>
-
-      {/* ─── Costo por conversación por campaña (multi-línea) ───────────── */}
-      <section>
-        <MetricTimeline
-          data={ts}
-          title="Costo por conversación por campaña"
-          aggregateFn={aggCostConvFn}
-          formatValue={fmtCurrency}
-          yTickFmt={fmtCurrency}
-          multiLine
+          allowMAToggle
+          allowViewToggle
         />
       </section>
 
@@ -212,6 +219,8 @@ export function ConversationsPage({ data, prevData, compareEnabled }: Props) {
           formatValue={fmtCount}
           yTickFmt={fmtCount}
           color="#60a5fa"
+          allowMAToggle
+          allowViewToggle
         />
       </section>
 
@@ -224,6 +233,8 @@ export function ConversationsPage({ data, prevData, compareEnabled }: Props) {
           formatValue={fmtCurrency}
           yTickFmt={fmtCurrency}
           color="#a78bfa"
+          allowMAToggle
+          allowViewToggle
         />
       </section>
 

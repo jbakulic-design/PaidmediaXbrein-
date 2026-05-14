@@ -130,41 +130,44 @@ export function TbreinDashboard({ token, accounts, defaultAccountId }: Props) {
         </p>
       </div>
 
-      {/* ── Global filters ───────────────────────────────────────────────── */}
-      <GlobalFilters
-        accounts={accounts}
-        accountId={accountId}
-        onAccount={handleAccount}
-        range={range}
-        preset={preset}
-        onRange={handleRange}
-        compareEnabled={compareEnabled}
-        onCompareToggle={handleCompareToggle}
-        prevRange={compareEnabled ? prevRange : undefined}
-        loading={loading}
-      />
-
-      {/* ── Tab navigation ───────────────────────────────────────────────── */}
+      {/* ── Sticky filter + tab bar ──────────────────────────────────────── */}
       <div
-        className="flex items-center gap-1 border-b overflow-x-auto"
-        style={{ borderColor: "var(--border)" }}
+        className="sticky top-16 z-30 flex flex-col gap-3 -mx-4 md:-mx-8 px-4 md:px-8 py-3"
+        style={{ background: "var(--background)", borderBottom: "1px solid var(--border)" }}
       >
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={cn(
-              "flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold whitespace-nowrap border-b-2 transition-all -mb-px",
-              activeTab === tab.key
-                ? "border-blue-500 text-blue-400"
-                : "border-transparent hover:border-border/50"
-            )}
-            style={activeTab !== tab.key ? { color: "var(--muted-foreground)" } : undefined}
-          >
-            {tab.icon}
-            {tab.label}
-          </button>
-        ))}
+        {/* Global filters */}
+        <GlobalFilters
+          accounts={accounts}
+          accountId={accountId}
+          onAccount={handleAccount}
+          range={range}
+          preset={preset}
+          onRange={handleRange}
+          compareEnabled={compareEnabled}
+          onCompareToggle={handleCompareToggle}
+          prevRange={compareEnabled ? prevRange : undefined}
+          loading={loading}
+        />
+
+        {/* Tab navigation */}
+        <div className="flex items-center gap-1 overflow-x-auto">
+          {TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={cn(
+                "flex items-center gap-1.5 px-4 py-2 text-xs font-semibold whitespace-nowrap rounded-lg border transition-all",
+                activeTab === tab.key
+                  ? "bg-blue-500/15 text-blue-400 border-blue-500/30"
+                  : "border-transparent hover:bg-accent/60"
+              )}
+              style={activeTab !== tab.key ? { color: "var(--muted-foreground)" } : undefined}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ── Loading skeleton ─────────────────────────────────────────────── */}

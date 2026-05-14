@@ -25,6 +25,10 @@ import { BudgetProjection } from "@/components/BudgetProjection";
 import { SpendChart } from "@/components/SpendChart";
 import { Sidebar, type CampaignType, type MainTab, type AnalysisTab, CAMPAIGN_TYPE_CONFIG } from "@/components/Sidebar";
 import { TbreinDashboard } from "@/components/tbrein/TbreinDashboard";
+import { SettingsPage } from "@/components/tbrein/pages/SettingsPage";
+import { TeamPage } from "@/components/tbrein/pages/TeamPage";
+import { DocsPage } from "@/components/tbrein/pages/DocsPage";
+import { SupportPage } from "@/components/tbrein/pages/SupportPage";
 import { LoginGate } from "@/components/LoginGate";
 import { useReports } from "@/lib/useReports";
 import { useWorkspace } from "@/lib/useWorkspace";
@@ -522,6 +526,25 @@ export default function Dashboard() {
               defaultAccountId={selectedAccountId || undefined}
             />
           )}
+
+          {/* ── CONFIGURACIÓN ── */}
+          {mainTab === "settings" && (
+            <SettingsPage
+              token={earlyToken ?? undefined}
+              accountName={earlyAccounts.find((a) => a.id === selectedAccountId)?.name ?? metaConnection?.accountName}
+              accountId={selectedAccountId || undefined}
+              onLogout={handleMetaLogout}
+            />
+          )}
+
+          {/* ── EQUIPO ── */}
+          {mainTab === "team" && <TeamPage />}
+
+          {/* ── DOCUMENTACIÓN ── */}
+          {mainTab === "docs" && <DocsPage />}
+
+          {/* ── SOPORTE ── */}
+          {mainTab === "support" && <SupportPage />}
         </main>
       </div>
     </div>

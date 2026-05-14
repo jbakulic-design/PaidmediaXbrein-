@@ -281,6 +281,8 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
           formatValue={fmtCurrency}
           yTickFmt={fmtCurrency}
           color="#60a5fa"
+          allowMAToggle
+          allowViewToggle
         />
       </section>
 
@@ -294,6 +296,8 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
             formatValue={fmtRoasNum}
             yTickFmt={fmtRoasNum}
             color="#34d399"
+            allowMAToggle
+            allowViewToggle
           />
         </section>
       )}
@@ -308,6 +312,8 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
             formatValue={fmtCurrency}
             yTickFmt={fmtCurrency}
             color="#f97316"
+            allowMAToggle
+            allowViewToggle
           />
         </section>
       )}

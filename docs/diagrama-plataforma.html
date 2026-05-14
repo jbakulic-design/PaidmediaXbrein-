@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TBREIN Paid Media — Diagrama de plataforma</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #040f1a;
+    color: #e2e8f0;
+    font-family: 'Inter', system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 40px 60px 80px 28px; /* extra right padding for routing lines */
+  }
+
+  .page-header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+  .page-header h1 {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.4px;
+    color: #a4c9ff;
+  }
+  .page-header p {
+    margin-top: 5px;
+    font-size: 12px;
+    color: #4a6580;
+  }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #7a9ab8;
+  }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot-ok     { background: #45dfa4; }
+  .dot-wip    { background: #fabd34; }
+  .dot-broken { background: #ff7066; }
+
+  /* ── Connection legend ── */
+  .conn-legend {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    margin-bottom: 36px;
+    flex-wrap: wrap;
+  }
+  .conn-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 10px;
+    color: #5a7a96;
+  }
+  .conn-line {
+    width: 28px;
+    height: 2px;
+    border-radius: 2px;
+  }
+  .conn-line.dashed {
+    background: none;
+    border-top: 2px dashed currentColor;
+  }
+
+  /* ── Swimlane ── */
+  .lane {
+    display: flex;
+    gap: 0;
+    margin-bottom: 6px;
+    width: 100%;
+    max-width: 1080px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .lane-label {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    min-width: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    border-radius: 10px 0 0 10px;
+    padding: 16px 0;
+    flex-shrink: 0;
+  }
+
+  .lane-content {
+    flex: 1;
+    border-radius: 0 12px 12px 0;
+    padding: 16px 18px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .lane-auth    .lane-label { background: #0e1e35; color: #4a7aaa; }
+  .lane-auth    .lane-content { background: #07131f; border: 1px solid #0e2035; border-left: none; }
+  .lane-data    .lane-label { background: #0e2535; color: #4a8aaa; }
+  .lane-data    .lane-content { background: #071520; border: 1px solid #0e2540; border-left: none; }
+  .lane-filters .lane-label { background: #152035; color: #6080b0; }
+  .lane-filters .lane-content { background: #0a1525; border: 1px solid #152535; border-left: none; }
+  .lane-tabs    .lane-label { background: #0e1e30; color: #507090; }
+  .lane-tabs    .lane-content { background: #071320; border: 1px solid #0e2030; border-left: none; }
+  .lane-viz     .lane-label { background: #0e2030; color: #507aaa; }
+  .lane-viz     .lane-content { background: #071520; border: 1px solid #0e2535; border-left: none; }
+  .lane-infra   .lane-label { background: #111a22; color: #3a5570; }
+  .lane-infra   .lane-content { background: #070f16; border: 1px solid #111a28; border-left: none; }
+
+  /* ── Connector between lanes ── */
+  .connector {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 22px;
+    max-width: 1080px;
+    margin: 0 auto;
+    position: relative;
+  }
+  .connector::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0; bottom: 0;
+    width: 1px;
+    background: #1a3050;
+  }
+  .connector-arrow {
+    position: relative;
+    z-index: 1;
+    background: #040f1a;
+    padding: 0 6px;
+    color: #1a3050;
+    font-size: 14px;
+  }
+
+  /* ── Card ── */
+  .card {
+    background: #0d1e2e;
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 140px;
+    flex: 1;
+    position: relative;
+    border: 1px solid #152535;
+  }
+  .card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .card-title {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #c9dff5;
+    line-height: 1.3;
+  }
+  .card-desc {
+    font-size: 10px;
+    color: #4a6880;
+    line-height: 1.6;
+    margin-top: 2px;
+  }
+  .badge {
+    flex-shrink: 0;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 2px 7px;
+    border-radius: 100px;
+    white-space: nowrap;
+  }
+  .badge.ok     { background: #0a2e1e; color: #45dfa4; border: 1px solid #1a4d30; }
+  .badge.wip    { background: #2a2000; color: #fabd34; border: 1px solid #4a3800; }
+  .badge.broken { background: #2e0f0a; color: #ff7066; border: 1px solid #4d1a14; }
+
+  .tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
+  .chip {
+    display: inline-block;
+    background: #07111c;
+    border: 1px solid #122030;
+    border-radius: 5px;
+    padding: 1px 6px;
+    font-size: 9.5px;
+    color: #506880;
+  }
+
+  .card.blue  { border-left: 3px solid #1e4d8e; }
+  .card.green { border-left: 3px solid #1a5040; }
+  .card.amber { border-left: 3px solid #5a4000; }
+  .card.red   { border-left: 3px solid #5a1a14; }
+
+  .card-plain {
+    font-size: 10px;
+    color: #7a9ab8;
+    line-height: 1.6;
+    margin-top: 6px;
+    padding-top: 7px;
+    border-top: 1px dashed #0e2535;
+  }
+  .card-plain::before { content: '💬 '; font-size: 9px; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>TBREIN · Paid Media Analyzer</h1>
+  <p>Arquitectura y estado de la plataforma · Meta Ads API</p>
+</div>
+
+<!-- Status legend -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot dot-ok"></div> Funcionando</div>
+  <div class="legend-item"><div class="legend-dot dot-wip"></div> En desarrollo / parcial</div>
+  <div class="legend-item"><div class="legend-dot dot-broken"></div> Roto / pendiente</div>
+</div>
+
+<!-- Connection legend -->
+<div class="conn-legend">
+  <div class="conn-legend-item">
+    <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#a4c9ff" stroke-width="1.5" marker-end="url(#leg-arr-blue)"/><defs><marker id="leg-arr-blue" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3 z" fill="#a4c9ff" opacity="0.7"/></marker></defs></svg>
+    Flujo de datos principal
+  </div>
+  <div class="conn-legend-item">
+    <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#45dfa4" stroke-width="1.5" marker-end="url(#leg-arr-green)"/><defs><marker id="leg-arr-green" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3 z" fill="#45dfa4" opacity="0.7"/></marker></defs></svg>
+    Ad sets → Tablas
+  </div>
+  <div class="conn-legend-item">
+    <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#fabd34" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#leg-arr-yellow)"/><defs><marker id="leg-arr-yellow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3 z" fill="#fabd34" opacity="0.7"/></marker></defs></svg>
+    Filtrado por objetivo (lógica condicional)
+  </div>
+</div>
+
+<!-- ════ DIAGRAM ROOT — SVG overlay anchored here ════ -->
+<div id="diagram-root" style="position:relative;">
+
+<!-- ══ NIVEL 1: AUTENTICACIÓN ══ -->
+<div class="lane lane-auth">
+  <div class="lane-label">Autenticación</div>
+  <div class="lane-content">
+
+    <div class="card blue" id="c-oauth">
+      <div class="card-top">
+        <div class="card-title">Facebook OAuth</div>
+        <span class="badge ok">OK</span>
+      </div>
+      <div class="card-desc">Login con cuenta de Meta · SDK JS · Token guardado en sesión del navegador</div>
+      <div class="card-plain">El usuario hace clic en "Conectar con Facebook", inicia sesión con su cuenta de Meta y la plataforma recibe un permiso temporal para leer los datos de sus campañas.</div>
+    </div>
+
+    <div class="card blue" id="c-accounts">
+      <div class="card-top">
+        <div class="card-title">Carga de cuentas publicitarias</div>
+        <span class="badge ok">OK</span>
+      </div>
+      <div class="card-desc">GET /me/adaccounts · Muestra todas las cuentas disponibles del token</div>
+      <div class="card-plain">Una vez conectado, la plataforma trae automáticamente la lista de todas las cuentas de anuncios a las que ese usuario tiene acceso en Meta (ej: XBREIN, Expren, etc.).</div>
+    </div>
+
+    <div class="card amber">
+      <div class="card-top">
+        <div class="card-title">Gestión de sesión</div>
+        <span class="badge wip">Parcial</span>
+      </div>
+      <div class="card-desc">El token no persiste entre recargas · el usuario debe logearse de nuevo cada vez</div>
+      <div class="card-plain">Si cerrás el navegador o recargás la página, tenés que volver a hacer login. La plataforma aún no recuerda que ya estabas conectado.</div>
+    </div>
+
+  </div>
+</div>
+
+<div class="connector"><span class="connector-arrow">↓</span></div>
+
+<!-- ══ NIVEL 2: FILTROS ══ -->
+<div class="lane lane-filters">
+  <div class="lane-label">Filtros</div>
+  <div class="lane-content">
+
+    <div class="card blue" id="c-sel-account">
+      <div class="card-top">
+        <div class="card-title">Selector de cuenta</div>
+        <span class="badge ok">OK</span>
+      </div>
+      <div class="card-desc">Multi-cuenta · búsqueda por nombre · fijo al scroll (sticky)</div>
+      <div class="card-plain">Elegís qué cliente querés analizar. Si tenés muchas cuentas podés buscar por nombre. El selector queda visible aunque hagas scroll hacia abajo.</div>
+    </div>
+
+    <div class="card blue" id="c-sel-period">
+      <div class="card-top">
+        <div class="card-title">Selector de período</div>
+        <span class="badge ok">OK</span>
+      </div>
+      <div class="card-desc">7d · 14d · 30d · 90d · Este mes · Mes anterior · Personalizado</div>
+      <div class="card-plain">Elegís el rango de fechas que querés ver. Podés usar atajos como "últimos 30 días" o ingresar fechas específicas.</div>
+    </div>
+
+    <div class="card blue">
+      <div class="card-top">
+        <div class="card-title">Comparación de períodos</div>
+        <span class="badge ok">OK</span>
+      </div>
+      <div class="card-desc">Toggle ON/OFF · calcula el período anterior equivalente automáticamente</div>
+      <div class="card-plain">Cuando está activado, cada número muestra también si subió o bajó respecto al período anterior equivalente (ej: si ves 30 días, compara con los 30 días de antes).</div>
+    </div>
+
+  </div>
+</div>
+
+<div class="connector"><span class="connector-arrow">↓</span></div>
+
+<!-- ══ NIVEL 3: META API ══ -->
+<div class="lane lane-data">
+  <div class="lane-label">Meta API</div>
+  <div class="lane-content">
+
+    <div class="card blue" id="c-campaigns">
+      <div class="card-top">
+        <div class="card-title">Insights — Campaigns</div>
+        <span class="badge ok">OK</span>
+      </div>
+      <div class="card-desc">Nivel campaña · agregado por período</div>
+      <div class="tags">
+        <span class="chip">spend · impressions · reach · clicks</span>
+        <span class="chip">actions · action_values</span>
+      </div>
+      <div class="card-plain">Le pedimos a Meta los resultados totales de cada campaña en el período seleccionado: cuánto se gastó, cuántas personas vieron el anuncio, cuántos hicieron clic, etc.</div>
+    </div>
+
+    <div class="card blue" id="c-adsets">
+      <div class="card-top">
+        <div class="card-title">Insights — Ad Sets</div>
+        <span class="badge ok">OK</span>
+      </div>
+      <div class="card-desc">Nivel ad set · agregado por período</div>
+      <div class="tags">
+        <span class="chip">adset_id · adset_name</span>
+        <span class="chip">mismos campos de insights</span>
+      </div>
+      <div class="card-plain">Lo mismo que lo anterior pero desglosado por conjunto de anuncios (el nivel intermedio dentro de una campaña). Permite ver qué segmento de audiencia funcionó mejor.</div>
+    </div>
+
+    <div class="card blue" id="c-timeseries">
+      <div class="card-top">
+        <div class="card-title">Insights — Time Series</div>
+        <span class="badge ok">OK</span>
+      </div>
+      <div class="card-desc">Campaña × día · time_increment=1</div>
+      <div class="tags">
+        <span class="chip">date_start por fila</span>
+        <span class="chip">para gráficos de tiempo</span>
+      </div>
+      <div class="card-plain">Los mismos datos pero con un registro por día. Esto es lo que alimenta los gráficos de líneas donde se puede ver la evolución a lo largo del tiempo.</div>
+    </div>
+
+    <div class="card blue" id="c-objmap">
+      <div class="card-top">
+        <div class="card-title">Objectives Map</div>
+        <span class="badge ok">OK</span>
+      </div>
+      <div class="card-desc">GET /campaigns?fields=id,objective · para filtrar por tipo de campaña</div>
+      <div class="card-plain">Meta etiqueta cada campaña con un objetivo (ventas, leads, mensajes). La plataforma lee esas etiquetas para saber en qué pestaña mostrar cada campaña.</div>
+    </div>
+
+    <div class="card green" style="width:100%; flex:unset;">
+      <div class="card-top">
+        <div class="card-title">Atribución + resolución de acciones</div>
+        <span class="badge ok">OK</span>
+      </div>
+      <div class="card-desc">
+        Ventana: <strong style="color:#a4c9ff">7d click + 1d view</strong> (igual a Ads Manager) ·
+        Resolución por <strong style="color:#a4c9ff">MAX</strong> entre tipos coincidentes ·
+        Tipos de lead: lead, fb_pixel_lead, leadgen_grouped, contact_total, complete_registration ·
+        Tipos de conv: messaging_conversation_started_7d/1d, total_messaging_connection, first_reply
+      </div>
+      <div class="card-plain">Cuando alguien hace clic en un anuncio y después compra o deja sus datos, Meta registra esa acción. Acá definimos cuánto tiempo atrás contamos ese mérito (7 días desde el clic, 1 día desde que lo vio) y nos aseguramos de leer el número correcto aunque Meta lo reporte en varios formatos distintos. Esto hace que los números coincidan con lo que muestra Ads Manager.</div>
+    </div>
+
+  </div>
+</div>
+
+<div class="connector"><span class="connector-arrow">↓</span></div>
+
+<!-- ══ NIVEL 4: ANÁLISIS / TABS ══ -->
+<div class="lane lane-tabs">
+  <div class="lane-label">Análisis</div>
+  <div class="lane-content">
+
+    <div class="card blue" style="flex:1; min-width:220px;" id="c-tab-ecomm">
+      <div class="card-top">
+        <div class="card-title">🛒 E-commerce</div>
+        <span class="badge ok">OK</span>
+      </div>
+      <div class="card-desc">Todas las campañas · sin filtro por objetivo</div>
+      <div class="tags">
+        <span class="chip">ROAS global</span>
+        <span class="chip">CPA</span>
+        <span class="chip">Compras</span>
+        <span class="chip">Ingresos</span>
+        <span class="chip">Gasto</span>
+        <span class="chip">CTR · CPM · Frecuencia</span>
+      </div>
+      <div class="card-plain">Pestaña para clientes que venden productos online. Muestra cuánto dinero generaron las campañas vs. cuánto se gastó (ROAS), cuántas ventas hubo y cuánto costó cada venta (CPA).</div>
+    </div>
+
+    <div class="card green" style="flex:1; min-width:220px;" id="c-tab-leads">
+      <div class="card-top">
+        <div class="card-title">👥 Leads</div>
+        <span class="badge ok">OK</span>
+      </div>
+      <div class="card-desc">Filtro por objetivo LEAD · fallback inteligente a campañas con leads reales</div>
+      <div class="tags">
+        <span class="chip">CPL</span>
+        <span class="chip">Leads</span>
+        <span class="chip">Lead rate</span>
+        <span class="chip">CTR · CPC</span>
+        <span class="chip">Frecuencia acumulativa</span>
+      </div>
+      <div class="card-plain">Pestaña para clientes que buscan capturar datos de personas interesadas (formularios, registros). Muestra cuántos leads se generaron y cuánto costó cada uno (CPL = costo por lead).</div>
+    </div>
+
+    <div class="card green" style="flex:1; min-width:220px;" id="c-tab-convs">
+      <div class="card-top">
+        <div class="card-title">💬 Conversaciones</div>
+        <span class="badge ok">OK</span>
+      </div>
+      <div class="card-desc">Filtro por objetivo MESSAGES · fallback a campañas con conversaciones reales (fix Expren)</div>
+      <div class="tags">
+        <span class="chip">Costo/conv</span>
+        <span class="chip">Conversaciones</span>
+        <span class="chip">Tasa conv</span>
+        <span class="chip">CTR · CPC</span>
+        <span class="chip">Frecuencia acumulativa</span>
+      </div>
+      <div class="card-plain">Pestaña para campañas cuyo objetivo es que la gente inicie una conversación (WhatsApp, Messenger, Instagram DM). Muestra cuántas conversaciones arrancaron y cuánto costó cada una.</div>
+    </div>
+
+    <div class="card amber" style="flex:1; min-width:200px;">
+      <div class="card-top">
+        <div class="card-title">📐 ROAS TBREIN</div>
+        <span class="badge wip">En desarrollo</span>
+      </div>
+      <div class="card-desc">Segmentación CON / SIN TBREIN por campaña pendiente de implementar · placeholder visible</div>
+      <div class="card-plain">Una métrica especial que compararía el retorno de las campañas gestionadas por TBREIN vs. las que no lo son. Aparece en pantalla pero todavía no tiene datos reales.</div>
+    </div>
+
+    <div class="card amber" style="flex:1; min-width:200px;">
+      <div class="card-top">
+        <div class="card-title">🔬 Validación de métricas</div>
+        <span class="badge wip">Pendiente</span>
+      </div>
+      <div class="card-desc">Pruebas exhaustivas pendientes antes de lanzar</div>
+      <div class="card-plain">Antes de usar la plataforma como referencia oficial hay que verificar que todos los cálculos (sumas, promedios, tasas) den exactamente igual que Ads Manager. Está pendiente hacer esa comparación punto a punto.</div>
+    </div>
+
+  </div>
+</div>
+
+<div class="connector"><span class="connector-arrow">↓</span></div>
+
+<!-- ══ NIVEL 5: VISUALIZACIÓN ══ -->
+<div class="lane lane-viz">
+  <div class="lane-label">Visualización</div>
+  <div class="lane-content">
+
+    <div class="card blue" id="c-kpi">
+      <div class="card-top">
+        <div class="card-title">KPI Grid</div>
+        <span class="badge ok">OK</span>
+      </div>
+      <div class="card-desc">6 tarjetas principales + métricas adicionales · delta % con flecha ▲▼ · colores según "más es mejor"</div>
+      <div class="card-plain">El resumen de los números más importantes en tarjetas grandes. Cada tarjeta muestra el valor actual y una flecha que indica si mejoró (▲ verde) o empeoró (▼ rojo) respecto al período anterior.</div>
+    </div>
+
+    <div class="card blue" id="c-charts">
+      <div class="card-top">
+        <div class="card-title">Gráficos de tiempo</div>
+        <span class="badge ok">OK</span>
+      </div>
+      <div class="card-desc">3 controles por gráfico:</div>
+      <div class="tags">
+        <span class="chip">Granularidad: Día · Sem · Mes</span>
+        <span class="chip">Vista: Agregado · Por campaña</span>
+        <span class="chip">Suavizado: Absoluto · Med. móvil 7p</span>
+      </div>
+      <div class="card-plain">Líneas que muestran cómo evolucionó una métrica en el tiempo. Se puede ver por día, semana o mes; ver todas las campañas juntas o separadas; y activar un suavizado que elimina picos aislados para ver la tendencia real.</div>
+    </div>
+
+    <div class="card blue" id="c-tables">
+      <div class="card-top">
+        <div class="card-title">Tablas comparativas</div>
+        <span class="badge ok">OK</span>
+      </div>
+      <div class="card-desc">Campañas + Ad Sets · orden por cualquier columna · % gasto total · nombre de campaña padre en ad sets</div>
+      <div class="card-plain">Una tabla que lista todas las campañas (o conjuntos de anuncios) con sus métricas. Se puede ordenar por cualquier columna para ver rápidamente cuál gastó más, cuál generó más leads, etc.</div>
+    </div>
+
+    <div class="card amber">
+      <div class="card-top">
+        <div class="card-title">Sidebar — navegación</div>
+        <span class="badge wip">Parcial</span>
+      </div>
+      <div class="card-desc">Seguimiento activo · resto de secciones (Settings, Team, Docs, Support) son placeholders deshabilitados</div>
+      <div class="card-plain">El menú lateral izquierdo. Por ahora solo funciona la sección de Seguimiento. Las demás opciones (Configuración, Equipo, Documentación, Soporte) están visibles pero no hacen nada todavía.</div>
+    </div>
+
+    <div class="card red">
+      <div class="card-top">
+        <div class="card-title">Reportes exportables</div>
+        <span class="badge broken">No existe</span>
+      </div>
+      <div class="card-desc">No hay función de exportar a PDF / CSV / imagen aún</div>
+      <div class="card-plain">No se puede descargar ningún reporte. Si querés compartir los datos tenés que hacer capturas de pantalla o copiar los números a mano.</div>
+    </div>
+
+    <div class="card red">
+      <div class="card-top">
+        <div class="card-title">Alertas automáticas</div>
+        <span class="badge broken">No existe</span>
+      </div>
+      <div class="card-desc">No hay notificaciones cuando una métrica supera umbrales definidos</div>
+      <div class="card-plain">No hay forma de que la plataforma te avise si, por ejemplo, el CPL supera un límite establecido. Hay que entrar y revisar manualmente.</div>
+    </div>
+
+  </div>
+</div>
+
+<div class="connector"><span class="connector-arrow">↓</span></div>
+
+<!-- ══ NIVEL 6: INFRAESTRUCTURA ══ -->
+<div class="lane lane-infra">
+  <div class="lane-label">Infra</div>
+  <div class="lane-content">
+
+    <div class="card blue">
+      <div class="card-top">
+        <div class="card-title">Next.js 14 — App Router</div>
+        <span class="badge ok">OK</span>
+      </div>
+      <div class="card-desc">TypeScript · componentes client-side · sin backend propio</div>
+      <div class="card-plain">El framework con el que está construida la plataforma web. Es el "motor" que hace funcionar todo lo que se ve en el navegador.</div>
+    </div>
+
+    <div class="card blue">
+      <div class="card-top">
+        <div class="card-title">Tailwind v4 + MD3 Tokens</div>
+        <span class="badge ok">OK</span>
+      </div>
+      <div class="card-desc">Design system Material Design 3 · paleta navy dark · iconos Material Symbols</div>
+      <div class="card-plain">El sistema de diseño visual: colores, tipografía, iconos y estilos de los botones y tarjetas. Define cómo se ve la plataforma (tema oscuro navy, paleta de colores, etc.).</div>
+    </div>
+
+    <div class="card blue">
+      <div class="card-top">
+        <div class="card-title">Vercel</div>
+        <span class="badge ok">OK</span>
+      </div>
+      <div class="card-desc">Deploy automático desde rama main de GitHub · sin CI/CD adicional</div>
+      <div class="card-plain">El servicio que publica la plataforma en internet. Cada vez que se sube un cambio al repositorio de código, Vercel lo publica automáticamente en minutos sin intervención manual.</div>
+    </div>
+
+    <div class="card amber">
+      <div class="card-top">
+        <div class="card-title">Persistencia de datos</div>
+        <span class="badge wip">No hay</span>
+      </div>
+      <div class="card-desc">Todo se fetchea en tiempo real · sin caché · sin base de datos · sin historial guardado</div>
+      <div class="card-plain">La plataforma no guarda nada. Cada vez que entrás, le vuelve a pedir todos los datos a Meta desde cero. No hay historial, no se puede ver cómo estaban las métricas hace 6 meses si ya no están en el rango de Meta.</div>
+    </div>
+
+    <div class="card amber">
+      <div class="card-top">
+        <div class="card-title">Multi-usuario / roles</div>
+        <span class="badge broken">No existe</span>
+      </div>
+      <div class="card-desc">Cualquiera con acceso a la URL puede entrar · no hay sistema de usuarios ni permisos</div>
+      <div class="card-plain">No hay usuarios, contraseñas ni niveles de acceso. Cualquier persona que tenga el link y una cuenta de Meta conectada puede ver todo. No se puede restringir qué ve cada uno.</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- SVG overlay — anchored to diagram-root -->
+<svg id="conn-svg"
+  style="position:absolute; top:0; left:0; pointer-events:none; overflow:visible; z-index:50;"
+  width="100%" height="100%">
+</svg>
+
+</div><!-- /diagram-root -->
+
+<script>
+(function () {
+  const NS = 'http://www.w3.org/2000/svg';
+
+  /* ── Get element rect relative to diagram-root ── */
+  function R(id) {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    const er = el.getBoundingClientRect();
+    const rr = document.getElementById('diagram-root').getBoundingClientRect();
+    return {
+      l:  er.left   - rr.left,
+      r:  er.right  - rr.left,
+      t:  er.top    - rr.top,
+      b:  er.bottom - rr.top,
+      cx: er.left   - rr.left + er.width  / 2,
+      cy: er.top    - rr.top  + er.height / 2,
+      w:  er.width,
+      h:  er.height,
+    };
+  }
+
+  /* ── Append SVG element ── */
+  function el(tag, attrs) {
+    const e = document.createElementNS(NS, tag);
+    Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v));
+    return e;
+  }
+
+  /* ── Draw a path ── */
+  function path(svg, d, stroke, dash, marker) {
+    svg.appendChild(el('path', {
+      d,
+      fill: 'none',
+      stroke,
+      'stroke-width': '1.5',
+      'stroke-opacity': '0.65',
+      ...(dash   ? { 'stroke-dasharray': '5,4' } : {}),
+      ...(marker ? { 'marker-end': `url(#${marker})` } : {}),
+    }));
+  }
+
+  /* ── Draw text label with dark background pill ── */
+  function label(svg, x, y, text, color) {
+    const charW = 5.6;
+    const w = text.length * charW + 12;
+    const h = 13;
+    svg.appendChild(el('rect', {
+      x: x - w / 2, y: y - h / 2 + 1,
+      width: w, height: h, rx: 4,
+      fill: '#040f1a', opacity: '0.9',
+    }));
+    const t = el('text', {
+      x, y: y + 4,
+      'font-size': '8.5',
+      fill: color,
+      'text-anchor': 'middle',
+      'font-family': 'Inter, system-ui, sans-serif',
+      'font-weight': '600',
+    });
+    t.textContent = text;
+    svg.appendChild(t);
+  }
+
+  /* ══ Main draw function ══ */
+  function draw() {
+    const svg   = document.getElementById('conn-svg');
+    const root  = document.getElementById('diagram-root');
+    if (!svg || !root) return;
+
+    /* Resize SVG to full diagram height */
+    const rh = root.scrollHeight;
+    const rw = root.scrollWidth;
+    svg.setAttribute('height', rh);
+    svg.setAttribute('width',  rw);
+    svg.innerHTML = '';
+
+    /* ── Arrowhead markers ── */
+    const defs = el('defs', {});
+    [
+      ['m-blue',   '#a4c9ff'],
+      ['m-green',  '#45dfa4'],
+      ['m-yellow', '#fabd34'],
+    ].forEach(([id, col]) => {
+      const m = el('marker', { id, markerWidth:'8', markerHeight:'8', refX:'7', refY:'3', orient:'auto' });
+      const p = el('path', { d:'M0,0 L0,6 L8,3 z', fill: col, opacity:'0.7' });
+      m.appendChild(p);
+      defs.appendChild(m);
+    });
+    svg.appendChild(defs);
+
+    /* ── Fetch all rects ── */
+    const oauth      = R('c-oauth');
+    const accounts   = R('c-accounts');
+    const selAcc     = R('c-sel-account');
+    const campaigns  = R('c-campaigns');
+    const adsets     = R('c-adsets');
+    const timeseries = R('c-timeseries');
+    const objmap     = R('c-objmap');
+    const tabLeads   = R('c-tab-leads');
+    const tabConvs   = R('c-tab-convs');
+    const kpi        = R('c-kpi');
+    const charts     = R('c-charts');
+    const tables     = R('c-tables');
+
+    const LX = -38;   /* left routing rail  */
+    const RX = rw + 28; /* right routing rail */
+
+    /* ─────────────────────────────────────────────────
+       1. oauth → accounts   (horizontal, same lane)
+       ───────────────────────────────────────────────── */
+    if (oauth && accounts) {
+      const x1 = oauth.r, y1 = oauth.cy;
+      const x2 = accounts.l, y2 = accounts.cy;
+      const mx = (x1 + x2) / 2;
+      path(svg, `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`, '#a4c9ff', false, 'm-blue');
+    }
+
+    /* ─────────────────────────────────────────────────
+       2. accounts → sel-account  (auth → filters)
+       ───────────────────────────────────────────────── */
+    if (accounts && selAcc) {
+      const x1 = accounts.cx - 15, y1 = accounts.b;
+      const x2 = selAcc.cx,        y2 = selAcc.t;
+      const my = (y1 + y2) / 2;
+      path(svg, `M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}`, '#a4c9ff', false, 'm-blue');
+    }
+
+    /* ─────────────────────────────────────────────────
+       3. campaigns → kpi  (API → Viz, LEFT rail, skips Tabs lane)
+       ───────────────────────────────────────────────── */
+    if (campaigns && kpi) {
+      const x1 = campaigns.l, y1 = campaigns.cy;
+      const x2 = kpi.l,       y2 = kpi.cy;
+      path(svg, `M${x1},${y1} C${LX},${y1} ${LX},${y2} ${x2},${y2}`, '#a4c9ff', false, 'm-blue');
+      label(svg, LX, (y1 + y2) / 2, 'datos KPI', '#a4c9ff');
+    }
+
+    /* ─────────────────────────────────────────────────
+       4. timeseries → charts  (API → Viz, diagonal, skips Tabs lane)
+       ───────────────────────────────────────────────── */
+    if (timeseries && charts) {
+      const x1 = timeseries.cx, y1 = timeseries.b;
+      const x2 = charts.cx,     y2 = charts.t;
+      const my = (y1 + y2) / 2;
+      /* offset control points sideways to avoid center ↓ connectors */
+      path(svg, `M${x1},${y1} C${x1 - 55},${my} ${x2 + 55},${my} ${x2},${y2}`, '#60a5fa', false, 'm-blue');
+      label(svg, (x1 + x2) / 2, my, 'series diarias → gráficos', '#60a5fa');
+    }
+
+    /* ─────────────────────────────────────────────────
+       5. adsets → tables  (API → Viz, RIGHT rail, skips Tabs lane)
+       ───────────────────────────────────────────────── */
+    if (adsets && tables) {
+      const x1 = adsets.r,  y1 = adsets.cy;
+      const x2 = tables.r,  y2 = tables.cy;
+      path(svg, `M${x1},${y1} C${RX},${y1} ${RX},${y2} ${x2},${y2}`, '#45dfa4', false, 'm-green');
+      label(svg, RX, (y1 + y2) / 2, 'datos ad sets', '#45dfa4');
+    }
+
+    /* ─────────────────────────────────────────────────
+       6. objmap → tab-leads  (dashed yellow, RIGHT rail)
+       ───────────────────────────────────────────────── */
+    if (objmap && tabLeads) {
+      const RX2 = RX + 20;
+      const x1 = objmap.r,    y1 = objmap.cy - 5;
+      const x2 = tabLeads.r,  y2 = tabLeads.cy;
+      path(svg, `M${x1},${y1} C${RX2},${y1} ${RX2},${y2} ${x2},${y2}`, '#fabd34', true, 'm-yellow');
+      label(svg, RX2, (y1 + y2) / 2, 'filtra por objetivo', '#fabd34');
+    }
+
+    /* ─────────────────────────────────────────────────
+       7. objmap → tab-convs  (dashed yellow, RIGHT rail — parallel)
+       ───────────────────────────────────────────────── */
+    if (objmap && tabConvs) {
+      const RX3 = RX + 42;
+      const x1 = objmap.r + 4, y1 = objmap.cy + 5;
+      const x2 = tabConvs.r,   y2 = tabConvs.cy;
+      path(svg, `M${x1},${y1} C${RX3},${y1} ${RX3},${y2} ${x2},${y2}`, '#fabd34', true, 'm-yellow');
+    }
+  }
+
+  window.addEventListener('load',   draw);
+  window.addEventListener('resize', draw);
+})();
+</script>
+
+</body>
+</html>

@@ -153,8 +153,10 @@ export function aggCPM(rows: SeguimientoRow[]): number {
   return imp > 0 ? (aggSpend(rows) / imp) * 1000 : 0;
 }
 export function aggFrequency(rows: SeguimientoRow[]): number {
-  const valid = rows.filter((r) => r.frequency > 0);
-  return valid.length > 0 ? valid.reduce((s, r) => s + r.frequency, 0) / valid.length : 0;
+  // Cumulative frequency = total impressions / total reach (not average of per-row frequencies)
+  const totalImpressions = aggImpressions(rows);
+  const totalReach = rows.reduce((s, r) => s + r.reach, 0);
+  return totalReach > 0 ? totalImpressions / totalReach : 0;
 }
 export function aggROAS(rows: SeguimientoRow[]): number {
   const spend = aggSpend(rows);

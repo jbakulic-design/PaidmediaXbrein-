@@ -12,7 +12,7 @@ import { DATE_PRESET_LABELS } from "@/lib/metaApi";
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
-export type MainTab     = "analysis" | "reports" | "seguimiento";
+export type MainTab     = "analysis" | "reports" | "seguimiento" | "settings" | "team" | "docs" | "support";
 export type AnalysisTab = "table" | "charts" | "structure" | "compare" | "budget";
 export type CampaignType = "ecommerce" | "leads" | "messages";
 
@@ -350,10 +350,30 @@ function NavContent(props: SidebarProps & { onClose?: () => void }) {
 
         <div className="my-2 border-t border-outline-variant" />
 
-        <NavItem iconName="settings"  label="Configuración"  active={false} onClick={() => {}} disabled />
-        <NavItem iconName="group"     label="Equipo"         active={false} onClick={() => {}} disabled />
-        <NavItem iconName="menu_book" label="Documentación"  active={false} onClick={() => {}} disabled />
-        <NavItem iconName="help"      label="Soporte"        active={false} onClick={() => {}} disabled />
+        <NavItem
+          iconName="settings"
+          label="Configuración"
+          active={mainTab === "settings"}
+          onClick={() => { onMainTab("settings"); onClose?.(); }}
+        />
+        <NavItem
+          iconName="group"
+          label="Equipo"
+          active={mainTab === "team"}
+          onClick={() => { onMainTab("team"); onClose?.(); }}
+        />
+        <NavItem
+          iconName="menu_book"
+          label="Documentación"
+          active={mainTab === "docs"}
+          onClick={() => { onMainTab("docs"); onClose?.(); }}
+        />
+        <NavItem
+          iconName="help"
+          label="Soporte"
+          active={mainTab === "support"}
+          onClick={() => { onMainTab("support"); onClose?.(); }}
+        />
 
         {/* Meta connection panel */}
         {metaQuick && (
