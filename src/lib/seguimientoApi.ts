@@ -255,10 +255,11 @@ function getCustomConversions(
   const maxPerType = new Map<string, number>();
   for (const item of arr) {
     if (STANDARD_ACTION_TYPES.has(item.action_type)) continue;
+    // Only match specific named custom conversions (offsite_conversion.custom.{ID}).
+    // Exclude generic aggregate types like offsite_conversion.fb_pixel_custom which
+    // count ALL pixel events combined and produce inflated numbers.
     if (
       item.action_type.startsWith("offsite_conversion.custom.") ||
-      item.action_type.startsWith("offsite_conversion.fb_pixel_custom") ||
-      item.action_type.startsWith("offsite_conversion.fb_pixel_") ||
       item.action_type.includes("custom_conversion") ||
       item.action_type.includes("custom_event")
     ) {
