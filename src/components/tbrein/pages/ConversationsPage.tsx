@@ -152,6 +152,7 @@ export function ConversationsPage({ data, prevData, compareEnabled }: Props) {
       value:          frequency > 0 ? frequency.toFixed(2) : "—",
       delta:          frequency > 0 ? dp(frequency, pFrequency, compareEnabled) : null,
       prevLabel:      prevLbl(pFrequency, (v) => v.toFixed(2), compareEnabled),
+      note:           "Aprox. — el alcance entre campañas puede superponerse",
       icon:           <Zap className="w-3.5 h-3.5" />,
       msIcon:         "bolt",
       higherIsBetter: false,

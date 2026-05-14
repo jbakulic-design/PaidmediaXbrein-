@@ -180,6 +180,7 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
     {
       label:           "Frecuencia promedio",
       value:           aggFrequency(c) > 0 ? aggFrequency(c).toFixed(2) : "—",
+      note:            "Aprox. — el alcance entre campañas puede superponerse",
       delta:           dp(aggFrequency(c), p ? aggFrequency(p) : undefined, compareEnabled),
       higherIsBetter:  false,
     },
@@ -195,9 +196,17 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
   const fmtRoasNum  = (v: number) => formatRoas(v);
   const fmtCount    = (v: number) => formatCompact(v);
 
-  const aggSpendFn       = (rows: SeguimientoRow[]) => aggSpend(rows);
-  const aggRoasFn        = (rows: SeguimientoRow[]) => useCustomConvs ? aggCustomROAS(rows) : aggROAS(rows);
-  const aggCpaFn         = (rows: SeguimientoRow[]) => useCustomConvs ? aggCustomCPA(rows)  : aggCPA(rows);
+  const aggSpendFn = (rows: SeguimientoRow[]) => aggSpend(rows);
+  // Per-bucket: use whichever metric has data that day to avoid empty chart points
+  // on days where only one source has data (purchases=0 but custom convs > 0).
+  const aggRoasFn = (rows: SeguimientoRow[]) => {
+    const r = aggROAS(rows);
+    return r > 0 ? r : aggCustomROAS(rows);
+  };
+  const aggCpaFn = (rows: SeguimientoRow[]) => {
+    const p = aggPurchases(rows);
+    return p > 0 ? aggCPA(rows) : aggCustomCPA(rows);
+  };
   const aggCustomConvsFn = (rows: SeguimientoRow[]) => aggCustomConversions(rows);
 
   // ── ROAS placeholder note ─────────────────────────────────────────────────

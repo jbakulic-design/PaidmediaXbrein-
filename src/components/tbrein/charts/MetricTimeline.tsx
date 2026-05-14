@@ -227,10 +227,11 @@ export function MetricTimeline({
       const rawValues = sorted.map(([, rows]) => aggregateFn(rows));
       const maValues  = movingAvg(rawValues, MA_WINDOW);
 
-      const chartData = sorted.map(([k, rows], i) => ({
+      const chartData = sorted.map(([k], i) => ({
         date:    formatKey(k, gran),
         rawDate: k,
-        value:   useMA ? (maValues[i] ?? 0) : aggregateFn(rows),
+        // Use cached rawValues[i] — avoids calling aggregateFn twice per bucket
+        value:   useMA ? (maValues[i] ?? 0) : rawValues[i],
       }));
 
       return { chartData, campaignNames: [] as string[] };

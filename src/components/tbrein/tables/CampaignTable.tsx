@@ -83,7 +83,7 @@ function sortValue(r: SeguimientoRow, key: string): number {
     case "cpl":           return rowCpl(r);
     case "conversations": return r.conversations;
     case "costConv":      return rowCostConv(r);
-    case "ctr":           return r.ctr;
+    case "ctr":           return r.impressions > 0 ? (r.clicks / r.impressions) * 100 : 0;
     case "impressions":   return r.impressions;
     default:              return 0;
   }
@@ -113,8 +113,11 @@ function cellValue(r: SeguimientoRow, key: string): string {
       return r.conversations > 0 ? formatCompact(r.conversations) : "—";
     case "costConv":
       return rowCostConv(r) > 0 ? formatCurrencyCompact(rowCostConv(r)) : "—";
-    case "ctr":
-      return r.ctr > 0 ? formatPercent(r.ctr) : "—";
+    case "ctr": {
+      // Recalculate from clicks/impressions to match the KPI grid formula (aggCTR)
+      const ctr = r.impressions > 0 ? (r.clicks / r.impressions) * 100 : 0;
+      return ctr > 0 ? formatPercent(ctr) : "—";
+    }
     case "impressions":
       return r.impressions > 0 ? formatCompact(r.impressions) : "—";
     default:

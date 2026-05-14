@@ -162,6 +162,7 @@ export function LeadsPage({ data, prevData, compareEnabled }: Props) {
       value:          frequency > 0 ? frequency.toFixed(2) : "—",
       delta:          frequency > 0 ? dp(frequency, pFrequency, compareEnabled) : null,
       prevLabel:      prevLbl(pFrequency, (v) => v.toFixed(2), compareEnabled),
+      note:           "Aprox. — el alcance entre campañas puede superponerse",
       icon:           <Zap className="w-3.5 h-3.5" />,
       msIcon:         "bolt",
       higherIsBetter: false,
@@ -191,8 +192,18 @@ export function LeadsPage({ data, prevData, compareEnabled }: Props) {
   // ── Aggregation functions for charts ─────────────────────────────────────
   const fmtCurrency  = (v: number) => formatCurrencyCompact(v);
   const fmtCount     = (v: number) => formatCompact(v);
-  const aggCplFn     = (rows: SeguimientoRow[]) => useCustomConvs ? aggCustomCPA(rows)          : aggCPL(rows);
-  const aggLeadsFn   = (rows: SeguimientoRow[]) => useCustomConvs ? aggCustomConversions(rows)  : aggLeads(rows);
+  // Per-bucket: use whichever metric has data that day rather than forcing the
+  // period-level flag. Avoids empty chart points on days where only one source
+  // has data (e.g. a day with native leads=0 but custom conversions>0).
+  const aggLeadsFn = (rows: SeguimientoRow[]) => {
+    const l = aggLeads(rows);
+    return l > 0 ? l : aggCustomConversions(rows);
+  };
+  const aggCplFn = (rows: SeguimientoRow[]) => {
+    const l = aggLeads(rows);
+    const convs = l > 0 ? l : aggCustomConversions(rows);
+    return convs > 0 ? aggSpend(rows) / convs : 0;
+  };
   const aggSpendFn   = (rows: SeguimientoRow[]) => aggSpend(rows);
 
   return (

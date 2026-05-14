@@ -10,6 +10,8 @@ export interface KPICardProps {
   delta?:           number | null;
   /** Sub-label shown below the delta, e.g. "Anterior: $1.2K" */
   prevLabel?:       string;
+  /** Small disclaimer shown at the bottom of the card, e.g. for approximate metrics */
+  note?:            string;
   /** Legacy Lucide icon (kept for compat, not rendered visually) */
   icon?:            ReactNode;
   /** Material Symbol name for the ghost icon in the top-right corner */
@@ -29,6 +31,7 @@ export function KPICard({
   value,
   delta,
   prevLabel,
+  note,
   msIcon,
   higherIsBetter = true,
   size = "md",
@@ -111,6 +114,13 @@ export function KPICard({
       {prevLabel && (
         <span className="text-[11px] text-on-surface-variant truncate">
           {prevLabel}
+        </span>
+      )}
+
+      {/* Disclaimer note (e.g. for approximate metrics like frequency) */}
+      {note && (
+        <span className="text-[10px] text-on-surface-variant/60 truncate mt-auto">
+          {note}
         </span>
       )}
     </div>
