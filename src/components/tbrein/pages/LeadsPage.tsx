@@ -1,11 +1,13 @@
 "use client";
 
+import { useState, useEffect, useMemo } from "react";
 import { DollarSign, Users, MousePointerClick, LineChart, Zap } from "lucide-react";
 import type { SeguimientoPayload, SeguimientoRow } from "@/lib/seguimientoApi";
 import {
   isLeadObjective,
   aggSpend, aggLeads, aggCPL, aggCTR,
   aggCustomConversions, aggCustomCPA,
+  aggLeadsByType, aggCPLByType, availableConversionTypes,
   aggImpressions, aggFrequency, aggClicks,
   deltaPct,
 } from "@/lib/seguimientoApi";
@@ -13,12 +15,14 @@ import { KPIGrid, type KPIDef } from "../scorecards/KPIGrid";
 import { MetricTimeline } from "../charts/MetricTimeline";
 import { SeguimientoTable } from "../tables/CampaignTable";
 import { ActionTypesDebug } from "../debug/ActionTypesDebug";
+import { TrackingPicker } from "../tracking/TrackingPicker";
 import { formatCurrencyCompact, formatCompact, formatPercent } from "@/lib/utils";
 
 interface Props {
   data:           SeguimientoPayload;
   prevData?:      SeguimientoPayload | null;
   compareEnabled: boolean;
+  accountId?:     string;
 }
 
 /** Returns all campaigns relevant to the leads tab.
@@ -59,7 +63,26 @@ function prevLbl(
   return `Anterior: ${fmt(prev)}`;
 }
 
-export function LeadsPage({ data, prevData, compareEnabled }: Props) {
+export function LeadsPage({ data, prevData, compareEnabled, accountId }: Props) {
+  // ── Tracking override (persisted per account) ────────────────────────────
+  const storageKey = accountId ? `trackingOverride_${accountId}` : null;
+  const [trackingType, setTrackingType] = useState<string>("auto");
+
+  // Load saved override on mount / account change
+  useEffect(() => {
+    if (!storageKey) return;
+    const saved = localStorage.getItem(storageKey);
+    setTrackingType(saved ?? "auto");
+  }, [storageKey]);
+
+  function handleTrackingChange(type: string) {
+    setTrackingType(type);
+    if (storageKey) {
+      if (type === "auto") localStorage.removeItem(storageKey);
+      else localStorage.setItem(storageKey, type);
+    }
+  }
+
   // Compute valid campaign IDs once from campaigns, then reuse for adsets & timeSeries.
   // This prevents the old Map-dedup from killing time series rows (multiple rows per campaign).
   const validIds = leadCampaignIds(data.campaigns);
@@ -68,6 +91,15 @@ export function LeadsPage({ data, prevData, compareEnabled }: Props) {
   const ts = filterLeads(data.timeSeries,   validIds);
   const pIds = prevData ? leadCampaignIds(prevData.campaigns) : null;
   const p  = prevData ? filterLeads(prevData.campaigns, pIds) : undefined;
+
+  // Available custom conversion types for the picker (derived from current period)
+  const conversionOptions = useMemo(() => availableConversionTypes(c), [c]);
+  // If the saved override type no longer exists in this period's data, reset to auto
+  const effectiveTrackingType = useMemo(() => {
+    if (trackingType === "auto") return "auto";
+    const exists = conversionOptions.some((o) => o.type === trackingType);
+    return exists ? trackingType : "auto";
+  }, [trackingType, conversionOptions]);
 
   // Show notice only when no campaign has a lead objective tag at all
   const noLeadObjectives =
@@ -82,14 +114,19 @@ export function LeadsPage({ data, prevData, compareEnabled }: Props) {
   const impressions = aggImpressions(c);
   const frequency   = aggFrequency(c);
 
-  // Custom conversions — fallback when no native leads (e.g. pixel form-submit events)
+  // Custom conversions — auto detection or manual override
   const customConvs = aggCustomConversions(c);
   const customCpl   = aggCustomCPA(c);
   const useCustomConvs = leads === 0 && customConvs > 0;
 
-  // Effective lead metrics
-  const effLeads = useCustomConvs ? customConvs : leads;
-  const effCpl   = useCustomConvs ? customCpl   : cpl;
+  // If user selected a specific type, use it; otherwise use auto logic
+  const isOverride = effectiveTrackingType !== "auto";
+  const effLeads = isOverride
+    ? aggLeadsByType(c, effectiveTrackingType)
+    : (useCustomConvs ? customConvs : leads);
+  const effCpl = isOverride
+    ? aggCPLByType(c, effectiveTrackingType)
+    : (useCustomConvs ? customCpl : cpl);
 
   const pSpend        = p ? aggSpend(p) : undefined;
   const pLeads        = p ? aggLeads(p) : undefined;
@@ -121,17 +158,17 @@ export function LeadsPage({ data, prevData, compareEnabled }: Props) {
       higherIsBetter: false,
     },
     {
-      label:          useCustomConvs ? "Conversiones" : "Leads",
+      label:          isOverride ? "Conversiones (manual)" : useCustomConvs ? "Conversiones" : "Leads",
       value:          effLeads > 0 ? formatCompact(effLeads) : "—",
       delta:          effLeads > 0 ? dp(effLeads, pEffLeads, compareEnabled) : null,
       prevLabel:      prevLbl(pEffLeads, formatCompact, compareEnabled),
       icon:           <Users className="w-3.5 h-3.5" />,
-      msIcon:         useCustomConvs ? "conversion_path" : "group",
+      msIcon:         (isOverride || useCustomConvs) ? "conversion_path" : "group",
       higherIsBetter: true,
       accent:         true,
     },
     {
-      label:          useCustomConvs ? "Costo por conversión" : "CPL",
+      label:          isOverride ? "Costo/conv. (manual)" : useCustomConvs ? "Costo por conversión" : "CPL",
       value:          effCpl > 0 ? formatCurrencyCompact(effCpl) : "—",
       delta:          effCpl > 0 ? dp(effCpl, pEffCpl, compareEnabled) : null,
       prevLabel:      prevLbl(pEffCpl, formatCurrencyCompact, compareEnabled),
@@ -192,25 +229,25 @@ export function LeadsPage({ data, prevData, compareEnabled }: Props) {
   // ── Aggregation functions for charts ─────────────────────────────────────
   const fmtCurrency  = (v: number) => formatCurrencyCompact(v);
   const fmtCount     = (v: number) => formatCompact(v);
-  // Per-bucket: use whichever metric has data that day rather than forcing the
-  // period-level flag. Avoids empty chart points on days where only one source
-  // has data (e.g. a day with native leads=0 but custom conversions>0).
+  // Chart aggregation fns — respect manual override if active
   const aggLeadsFn = (rows: SeguimientoRow[]) => {
+    if (isOverride) return aggLeadsByType(rows, effectiveTrackingType);
     const l = aggLeads(rows);
     return l > 0 ? l : aggCustomConversions(rows);
   };
   const aggCplFn = (rows: SeguimientoRow[]) => {
+    if (isOverride) return aggCPLByType(rows, effectiveTrackingType);
     const l = aggLeads(rows);
     const convs = l > 0 ? l : aggCustomConversions(rows);
     return convs > 0 ? aggSpend(rows) / convs : 0;
   };
-  const aggSpendFn   = (rows: SeguimientoRow[]) => aggSpend(rows);
+  const aggSpendFn = (rows: SeguimientoRow[]) => aggSpend(rows);
 
   return (
     <div className="flex flex-col gap-6">
 
       {/* Aviso conversiones personalizadas */}
-      {useCustomConvs && (
+      {(useCustomConvs || isOverride) && !isOverride && (
         <div
           className="rounded-xl border px-4 py-3 text-xs flex items-center gap-2"
           style={{ borderColor: "#1e3d6e", background: "#0a1b30", color: "#a4c9ff" }}
@@ -221,8 +258,27 @@ export function LeadsPage({ data, prevData, compareEnabled }: Props) {
         </div>
       )}
 
+      {/* ─── Selector de métrica de tracking ────────────────────────────── */}
+      <TrackingPicker
+        options={conversionOptions}
+        selected={effectiveTrackingType}
+        onChange={handleTrackingChange}
+      />
+
+      {/* Override badge */}
+      {isOverride && (
+        <div
+          className="rounded-xl border px-4 py-3 text-xs flex items-center gap-2"
+          style={{ borderColor: "#1e3d6e", background: "#0a1b30", color: "#a4c9ff" }}
+        >
+          <span className="material-symbols-outlined shrink-0" style={{ fontSize: "14px" }}>tune</span>
+          Mostrando conversiones del tipo <strong className="font-mono">{effectiveTrackingType.split(".").pop()}</strong>.
+          Las métricas de KPI, gráficos y tabla reflejan este tipo específico.
+        </div>
+      )}
+
       {/* Objective filter notice */}
-      {noLeadObjectives && !useCustomConvs && (
+      {noLeadObjectives && !useCustomConvs && !isOverride && (
         <div
           className="rounded-xl border px-4 py-3 text-xs flex items-center gap-2"
           style={{ borderColor: "var(--border)", background: "var(--accent)", color: "var(--muted-foreground)" }}

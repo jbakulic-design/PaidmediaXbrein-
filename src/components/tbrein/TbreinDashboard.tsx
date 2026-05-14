@@ -239,6 +239,7 @@ export function TbreinDashboard({ token, accounts, defaultAccountId }: Props) {
               data={data}
               prevData={compareEnabled ? prevData : null}
               compareEnabled={compareEnabled}
+              accountId={accountId}
             />
           )}
 

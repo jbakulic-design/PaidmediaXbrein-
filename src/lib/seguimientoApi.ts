@@ -121,8 +121,10 @@ export interface SeguimientoRow {
   purchases:            number;
   purchaseValue:        number;
   conversations:        number;
-  customConversions:    number; // sum of offsite_conversion.custom.* types
-  customConversionValue:number; // associated revenue for custom conversions
+  customConversions:    number; // count for the auto-detected best conversion type
+  customConversionValue:number; // associated revenue for that same type
+  /** Count per each detected custom conversion type — used for manual override */
+  customConversionsByType: Record<string, number>;
   /** All action_types with value > 0 — used for diagnostics only */
   rawActionTypes:       string[];
   date?:                string; // only set in timeSeries rows
@@ -180,6 +182,28 @@ export function aggCostPerConv(rows: SeguimientoRow[]): number {
 }
 export function aggCustomConversions(rows: SeguimientoRow[])     { return sumField(rows, "customConversions"); }
 export function aggCustomConversionValue(rows: SeguimientoRow[]) { return sumField(rows, "customConversionValue"); }
+
+/** Sum conversions for a specific action type across rows (for manual tracking override). */
+export function aggLeadsByType(rows: SeguimientoRow[], actionType: string): number {
+  return rows.reduce((s, r) => s + (r.customConversionsByType?.[actionType] ?? 0), 0);
+}
+/** CPL for a specific action type. */
+export function aggCPLByType(rows: SeguimientoRow[], actionType: string): number {
+  const leads = aggLeadsByType(rows, actionType);
+  return leads > 0 ? aggSpend(rows) / leads : 0;
+}
+/** All custom conversion types available in a set of rows, with their total counts. */
+export function availableConversionTypes(rows: SeguimientoRow[]): { type: string; count: number }[] {
+  const totals = new Map<string, number>();
+  for (const r of rows) {
+    for (const [type, count] of Object.entries(r.customConversionsByType ?? {})) {
+      totals.set(type, (totals.get(type) ?? 0) + count);
+    }
+  }
+  return Array.from(totals.entries())
+    .map(([type, count]) => ({ type, count }))
+    .sort((a, b) => b.count - a.count);
+}
 export function aggCustomCPA(rows: SeguimientoRow[]): number {
   const conv = aggCustomConversions(rows);
   return conv > 0 ? aggSpend(rows) / conv : 0;
@@ -262,8 +286,8 @@ const STANDARD_ACTION_TYPES = new Set([
 function getCustomConversionPair(
   actions:      { action_type: string; value: string }[] | undefined,
   actionValues: { action_type: string; value: string }[] | undefined,
-): { count: number; value: number } {
-  if (!actions) return { count: 0, value: 0 };
+): { count: number; value: number; byType: Record<string, number> } {
+  if (!actions) return { count: 0, value: 0, byType: {} };
 
   // Step 1: max count per distinct custom conversion type (resolves window dupes)
   const maxCountPerType = new Map<string, number>();
@@ -288,11 +312,12 @@ function getCustomConversionPair(
     if (count > bestCount) { bestCount = count; bestType = type; }
   }
 
-  if (bestCount === 0) return { count: 0, value: 0 };
+  const byType = Object.fromEntries(maxCountPerType);
+  if (bestCount === 0) return { count: 0, value: 0, byType };
 
   // Step 3: look up revenue for the SAME winning type (consistent pair)
   const convValue = actionValues ? getAction(actionValues, bestType) : 0;
-  return { count: bestCount, value: convValue };
+  return { count: bestCount, value: convValue, byType };
 }
 
 /** Kept for backwards-compat — returns only the count from the pair. */
@@ -385,13 +410,15 @@ function parseRow(
   // back to getCustomConversionPair which finds the best type AND returns
   // count+value from that SAME type (avoids the old mismatch where count-MAX
   // and value-MAX could come from different conversion types).
-  const { count: customConversions, value: customConversionValue } = (() => {
+  const { count: customConversions, value: customConversionValue, byType: customConversionsByType } = (() => {
     if (targetConvId) {
       const count = getAction(r.actions, `offsite_conversion.custom.${targetConvId}`);
       if (count > 0) {
+        const key = `offsite_conversion.custom.${targetConvId}`;
         return {
           count,
-          value: getAction(r.action_values, `offsite_conversion.custom.${targetConvId}`),
+          value: getAction(r.action_values, key),
+          byType: { [key]: count } as Record<string, number>,
         };
       }
     }
@@ -454,8 +481,9 @@ function parseRow(
       "messaging_conversation_started_7d",
       "messaging_conversation_started_1d"
     ),
-    customConversions:     customConversions,
-    customConversionValue: customConversionValue,
+    customConversions:       customConversions,
+    customConversionValue:   customConversionValue,
+    customConversionsByType: customConversionsByType,
     rawActionTypes: (r.actions ?? [])
       .filter((a) => parseFloat(a.value) > 0)
       .map((a) => a.action_type),
