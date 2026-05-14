@@ -201,16 +201,26 @@ interface RawInsight {
 function pn(v?: string): number {
   return v ? parseFloat(v) || 0 : 0;
 }
+/**
+ * Returns the MAXIMUM value found across all matching action types.
+ * Using max (not first-match) avoids the case where a minor action type
+ * matches with value 1 while the real metric is in another type with value 45.
+ * Using max (not sum) avoids double-counting when types overlap.
+ */
 function getAction(
   arr: { action_type: string; value: string }[] | undefined,
   ...types: string[]
 ): number {
   if (!arr) return 0;
+  let best = 0;
   for (const t of types) {
     const found = arr.find((a) => a.action_type === t);
-    if (found) return parseFloat(found.value) || 0;
+    if (found) {
+      const val = parseFloat(found.value) || 0;
+      if (val > best) best = val;
+    }
   }
-  return 0;
+  return best;
 }
 
 async function fetchPaged<T>(url: string): Promise<T[]> {
@@ -243,6 +253,7 @@ const INSIGHT_FIELDS = [
   "ctr",
   "cpm",
   "frequency",
+  "date_start",
   "actions",
   "action_values",
 ].join(",");
@@ -268,15 +279,23 @@ function parseRow(
     frequency:     pn(r.frequency),
     leads: getAction(
       r.actions,
+      // Native Lead Gen Forms
       "lead",
       "onsite_conversion.lead_grouped",
-      "leadgen_grouped"
+      "leadgen_grouped",
+      "leadgen.grouped",
+      // Pixel-based lead events (website landing pages)
+      "offsite_conversion.fb_pixel_lead",
+      // Other lead-type conversions
+      "contact_total",
+      "complete_registration"
     ),
     purchases: getAction(
       r.actions,
       "purchase",
       "offsite_conversion.fb_pixel_purchase",
-      "omni_purchase"
+      "omni_purchase",
+      "offsite_conversion.fb_pixel_complete_registration"
     ),
     purchaseValue: getAction(
       r.action_values,
@@ -286,9 +305,17 @@ function parseRow(
     ),
     conversations: getAction(
       r.actions,
+      // 7-day attribution (standard)
       "onsite_conversion.messaging_conversation_started_7d",
+      // 1-day attribution (fallback)
+      "onsite_conversion.messaging_conversation_started_1d",
+      // Total connections (broader)
       "onsite_conversion.total_messaging_connection",
-      "onsite_conversion.messaging_first_reply"
+      // First replies
+      "onsite_conversion.messaging_first_reply",
+      // Without prefix (newer campaigns)
+      "messaging_conversation_started_7d",
+      "messaging_conversation_started_1d"
     ),
     date: r.date_start,
   };
@@ -305,9 +332,13 @@ async function fetchInsights(
   const t = `access_token=${token}`;
   const tr = encodeURIComponent(JSON.stringify({ since: range.since, until: range.until }));
   const ti = timeIncrement ? `&time_increment=${timeIncrement}` : "";
+  // Match Ads Manager's default attribution window (7-day click + 1-day view).
+  // Without this the API may use a narrower window, causing lead/conversion counts
+  // to be much lower than what Ads Manager reports.
+  const aw = `&action_attribution_windows[]=7d_click&action_attribution_windows[]=1d_view`;
   const url =
     `${GRAPH}/${id}/insights?fields=${INSIGHT_FIELDS}` +
-    `&level=${level}&time_range=${tr}${ti}&limit=200&${t}`;
+    `&level=${level}&time_range=${tr}${ti}${aw}&limit=200&${t}`;
   return fetchPaged<RawInsight>(url);
 }
 
