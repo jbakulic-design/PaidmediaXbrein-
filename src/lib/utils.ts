@@ -16,11 +16,13 @@ export function formatCompact(n: number): string {
   return n.toFixed(0);
 }
 
-// Moneda compacta para KPI cards: $1.2M, $45.3K, $890
+// Moneda compacta para KPI cards: $1.2M, $45.3K, $890, $1.49
 export function formatCurrencyCompact(n: number): string {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2).replace(/\.00$/, "")}M`;
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
-  return `$${n.toFixed(0)}`;
+  if (n >= 1_000)     return `$${(n / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
+  if (n >= 100)       return `$${n.toFixed(0)}`;
+  if (n >= 10)        return `$${n.toFixed(1)}`;
+  return `$${n.toFixed(2)}`; // < $10: muestra centavos ($1.49, $0.89)
 }
 
 // Moneda completa para tabla (más detalle)
