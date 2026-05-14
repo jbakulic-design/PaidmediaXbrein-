@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Loader2, ShoppingCart, Users, MessageCircle, Zap } from "lucide-react";
 import type { MetaAdAccount } from "@/lib/metaApi";
 import type { SeguimientoPayload, DateRange, SeguimientoPreset } from "@/lib/seguimientoApi";
@@ -215,7 +216,6 @@ export function TbreinDashboard({ token, accounts, defaultAccountId }: Props) {
 
       {/* ── Content ──────────────────────────────────────────────────────── */}
       {data && !(!accountId && !loading) && (
-        /* Loading overlay: keep previous data visible while re-fetching */
         <div className={cn("flex flex-col gap-5 transition-opacity", loading && "opacity-60 pointer-events-none")}>
 
           {/* Refresh indicator */}
@@ -226,30 +226,40 @@ export function TbreinDashboard({ token, accounts, defaultAccountId }: Props) {
             </div>
           )}
 
-          {activeTab === "ecommerce" && (
-            <EcommercePage
-              data={data}
-              prevData={compareEnabled ? prevData : null}
-              compareEnabled={compareEnabled}
-            />
-          )}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+            >
+              {activeTab === "ecommerce" && (
+                <EcommercePage
+                  data={data}
+                  prevData={compareEnabled ? prevData : null}
+                  compareEnabled={compareEnabled}
+                />
+              )}
 
-          {activeTab === "leads" && (
-            <LeadsPage
-              data={data}
-              prevData={compareEnabled ? prevData : null}
-              compareEnabled={compareEnabled}
-              accountId={accountId}
-            />
-          )}
+              {activeTab === "leads" && (
+                <LeadsPage
+                  data={data}
+                  prevData={compareEnabled ? prevData : null}
+                  compareEnabled={compareEnabled}
+                  accountId={accountId}
+                />
+              )}
 
-          {activeTab === "conversations" && (
-            <ConversationsPage
-              data={data}
-              prevData={compareEnabled ? prevData : null}
-              compareEnabled={compareEnabled}
-            />
-          )}
+              {activeTab === "conversations" && (
+                <ConversationsPage
+                  data={data}
+                  prevData={compareEnabled ? prevData : null}
+                  compareEnabled={compareEnabled}
+                />
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
       )}
 

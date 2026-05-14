@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
+import { motion } from "framer-motion";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend,
@@ -122,9 +123,11 @@ function GranToggle({
   return (
     <div className="flex items-center gap-1">
       {(["day","week","month"] as Granularity[]).map((g) => (
-        <button
+        <motion.button
           key={g}
           onClick={() => onChange(g)}
+          whileTap={{ scale: 0.88 }}
+          transition={{ type: "spring", stiffness: 500, damping: 20 }}
           className={cn(
             "px-2.5 py-1 rounded-lg text-xs font-medium transition",
             value === g
@@ -136,7 +139,7 @@ function GranToggle({
             : undefined}
         >
           {g === "day" ? "Día" : g === "week" ? "Sem" : "Mes"}
-        </button>
+        </motion.button>
       ))}
     </div>
   );
@@ -156,9 +159,11 @@ function PillToggle<T extends string>({
   return (
     <div className="flex items-center gap-1">
       {options.map((o) => (
-        <button
+        <motion.button
           key={o.key}
           onClick={() => onChange(o.key)}
+          whileTap={{ scale: 0.88 }}
+          transition={{ type: "spring", stiffness: 500, damping: 20 }}
           className={cn(
             "px-2 py-0.5 rounded-md text-[11px] font-medium transition border",
             value === o.key
@@ -170,7 +175,7 @@ function PillToggle<T extends string>({
             : undefined}
         >
           {o.label}
-        </button>
+        </motion.button>
       ))}
     </div>
   );

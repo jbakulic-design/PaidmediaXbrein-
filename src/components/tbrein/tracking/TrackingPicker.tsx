@@ -1,5 +1,7 @@
 "use client";
 
+import { motion } from "framer-motion";
+
 /** Short human-readable label for a custom conversion action type.
  *  Meta doesn't return names via Insights API, so we show a shortened ID.
  *  e.g. "offsite_conversion.custom.1028375712813724" → "Conv. …813724" */
@@ -44,8 +46,10 @@ export function TrackingPicker({ options, selected, onChange }: Props) {
       {/* Pill buttons */}
       <div className="flex flex-wrap gap-1.5">
         {/* Auto option */}
-        <button
+        <motion.button
           onClick={() => onChange("auto")}
+          whileTap={{ scale: 0.9 }}
+          transition={{ type: "spring", stiffness: 500, damping: 20 }}
           className="flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-medium border transition-colors"
           style={
             selected === "auto"
@@ -57,13 +61,15 @@ export function TrackingPicker({ options, selected, onChange }: Props) {
             <span className="material-symbols-outlined" style={{ fontSize: "11px" }}>check</span>
           )}
           Auto (detectado)
-        </button>
+        </motion.button>
 
         {/* One pill per available custom type */}
         {options.map((opt) => (
-          <button
+          <motion.button
             key={opt.type}
             onClick={() => onChange(opt.type)}
+            whileTap={{ scale: 0.9 }}
+            transition={{ type: "spring", stiffness: 500, damping: 20 }}
             className="flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-medium border transition-colors"
             title={opt.type}
             style={
@@ -76,12 +82,10 @@ export function TrackingPicker({ options, selected, onChange }: Props) {
               <span className="material-symbols-outlined" style={{ fontSize: "11px" }}>check</span>
             )}
             {shortLabel(opt.type)}
-            <span
-              className="ml-0.5 opacity-60 font-mono"
-            >
+            <span className="ml-0.5 opacity-60 font-mono">
               ({opt.count})
             </span>
-          </button>
+          </motion.button>
         ))}
       </div>
 

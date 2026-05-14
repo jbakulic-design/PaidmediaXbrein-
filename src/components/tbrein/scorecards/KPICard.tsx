@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
@@ -42,7 +43,6 @@ export function KPICard({
   const isGood    = hasDelta ? (higherIsBetter ? delta! >= 0 : delta! <= 0) : null;
   const deltaAbs  = hasDelta ? Math.abs(delta!) : null;
 
-  // Map to Material Symbol icon names
   const arrowIcon = hasDelta
     ? delta! > 0
       ? "arrow_upward"
@@ -52,9 +52,12 @@ export function KPICard({
     : null;
 
   return (
-    <div
+    <motion.div
+      whileHover={{ scale: 1.025, y: -2 }}
+      whileTap={{ scale: 0.97 }}
+      transition={{ type: "spring", stiffness: 400, damping: 28 }}
       className={cn(
-        "bg-surface-container-low border border-outline-variant rounded-xl flex flex-col gap-2 relative overflow-hidden group hover:border-primary/50 transition-colors",
+        "bg-surface-container-low border border-outline-variant rounded-xl flex flex-col gap-2 relative overflow-hidden group hover:border-primary/50 transition-colors cursor-default",
         size === "lg" ? "p-6" : size === "sm" ? "p-4" : "p-5",
         accent && "border-primary/30 bg-surface-container",
         className
@@ -62,7 +65,7 @@ export function KPICard({
     >
       {/* Ghost icon — top-right corner */}
       {msIcon && (
-        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none select-none">
+        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-25 transition-opacity duration-300 pointer-events-none select-none">
           <span
             className="material-symbols-outlined text-primary"
             style={{ fontSize: "44px", lineHeight: 1 }}
@@ -117,12 +120,12 @@ export function KPICard({
         </span>
       )}
 
-      {/* Disclaimer note (e.g. for approximate metrics like frequency) */}
+      {/* Disclaimer note */}
       {note && (
         <span className="text-[10px] text-on-surface-variant/60 truncate mt-auto">
           {note}
         </span>
       )}
-    </div>
+    </motion.div>
   );
 }

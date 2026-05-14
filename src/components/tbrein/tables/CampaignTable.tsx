@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react";
 import type { SeguimientoRow } from "@/lib/seguimientoApi";
 import {
@@ -234,8 +235,11 @@ export function SeguimientoTable({ rows, mode, isAdset = false, title }: Props) 
               const pctSpend     = totalSpend > 0 ? (row.spend / totalSpend) * 100 : 0;
 
               return (
-                <tr
+                <motion.tr
                   key={`${row.campaignId}-${row.adsetId ?? ""}-${i}`}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.03, duration: 0.18, ease: "easeOut" }}
                   className="transition-colors hover:bg-accent/25 border-b last:border-0"
                   style={{ borderColor: "var(--border)" }}
                 >
@@ -284,7 +288,7 @@ export function SeguimientoTable({ rows, mode, isAdset = false, title }: Props) 
                       </td>
                     );
                   })}
-                </tr>
+                </motion.tr>
               );
             })}
           </tbody>
