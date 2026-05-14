@@ -14,6 +14,7 @@ import {
 import { KPIGrid, type KPIDef } from "../scorecards/KPIGrid";
 import { MetricTimeline } from "../charts/MetricTimeline";
 import { SeguimientoTable } from "../tables/CampaignTable";
+import { ActionTypesDebug } from "../debug/ActionTypesDebug";
 import {
   formatCurrencyCompact,
   formatCompact,
@@ -391,6 +392,11 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
           isAdset
           title="Comparativa de conjuntos de anuncios"
         />
+      </section>
+
+      {/* ─── Diagnóstico (colapsado por defecto) ─────────────────────────── */}
+      <section>
+        <ActionTypesDebug rows={data.campaigns} />
       </section>
 
     </div>

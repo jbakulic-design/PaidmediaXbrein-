@@ -123,6 +123,8 @@ export interface SeguimientoRow {
   conversations:        number;
   customConversions:    number; // sum of offsite_conversion.custom.* types
   customConversionValue:number; // associated revenue for custom conversions
+  /** All action_types with value > 0 — used for diagnostics only */
+  rawActionTypes:       string[];
   date?:                string; // only set in timeSeries rows
 }
 
@@ -250,7 +252,9 @@ function getCustomConversions(
     if (
       item.action_type.startsWith("offsite_conversion.custom.") ||
       item.action_type.startsWith("offsite_conversion.fb_pixel_custom") ||
-      item.action_type.includes("custom_conversion")
+      item.action_type.startsWith("offsite_conversion.fb_pixel_") || // any non-standard pixel event
+      item.action_type.includes("custom_conversion") ||
+      item.action_type.includes("custom_event")
     ) {
       seen.add(item.action_type);
       total += parseFloat(item.value) || 0;
@@ -377,6 +381,9 @@ function parseRow(
     ),
     customConversions:     getCustomConversions(r.actions),
     customConversionValue: getCustomConversions(r.action_values),
+    rawActionTypes: (r.actions ?? [])
+      .filter((a) => parseFloat(a.value) > 0)
+      .map((a) => a.action_type),
     date: r.date_start,
   };
 }

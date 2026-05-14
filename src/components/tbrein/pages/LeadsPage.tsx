@@ -12,6 +12,7 @@ import {
 import { KPIGrid, type KPIDef } from "../scorecards/KPIGrid";
 import { MetricTimeline } from "../charts/MetricTimeline";
 import { SeguimientoTable } from "../tables/CampaignTable";
+import { ActionTypesDebug } from "../debug/ActionTypesDebug";
 import { formatCurrencyCompact, formatCompact, formatPercent } from "@/lib/utils";
 
 interface Props {
@@ -283,6 +284,11 @@ export function LeadsPage({ data, prevData, compareEnabled }: Props) {
           isAdset
           title="Comparativa de conjuntos de anuncios (leads)"
         />
+      </section>
+
+      {/* ─── Diagnóstico (colapsado por defecto) ────────────────────────── */}
+      <section>
+        <ActionTypesDebug rows={c} />
       </section>
 
     </div>
