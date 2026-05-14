@@ -49,19 +49,37 @@ const CONVERSATIONS_COLS: Col[] = [
 
 // ─── Per-row computed values ──────────────────────────────────────────────────
 
-function rowRoas(r: SeguimientoRow)     { return r.spend > 0 && r.purchaseValue > 0 ? r.purchaseValue / r.spend : 0; }
-function rowCpa(r: SeguimientoRow)      { return r.purchases > 0 ? r.spend / r.purchases : 0; }
-function rowCpl(r: SeguimientoRow)      { return r.leads > 0 ? r.spend / r.leads : 0; }
+/** Effective conversions: standard purchases, fallback to custom conversions */
+function rowPurchases(r: SeguimientoRow): number {
+  return r.purchases > 0 ? r.purchases : (r.customConversions ?? 0);
+}
+/** Effective leads: native leads, fallback to custom conversions (pixel form events) */
+function rowLeads(r: SeguimientoRow): number {
+  return r.leads > 0 ? r.leads : (r.customConversions ?? 0);
+}
+
+function rowRoas(r: SeguimientoRow) {
+  const value = r.purchaseValue > 0 ? r.purchaseValue : (r.customConversionValue ?? 0);
+  return r.spend > 0 && value > 0 ? value / r.spend : 0;
+}
+function rowCpa(r: SeguimientoRow) {
+  const p = rowPurchases(r);
+  return p > 0 ? r.spend / p : 0;
+}
+function rowCpl(r: SeguimientoRow) {
+  const l = rowLeads(r);
+  return l > 0 ? r.spend / l : 0;
+}
 function rowCostConv(r: SeguimientoRow) { return r.conversations > 0 ? r.spend / r.conversations : 0; }
 
 function sortValue(r: SeguimientoRow, key: string): number {
   switch (key) {
     case "spend":         return r.spend;
-    case "revenue":       return r.purchaseValue;
+    case "revenue":       return r.purchaseValue > 0 ? r.purchaseValue : (r.customConversionValue ?? 0);
     case "roas":          return rowRoas(r);
-    case "purchases":     return r.purchases;
+    case "purchases":     return rowPurchases(r);
     case "cpa":           return rowCpa(r);
-    case "leads":         return r.leads;
+    case "leads":         return rowLeads(r);
     case "cpl":           return rowCpl(r);
     case "conversations": return r.conversations;
     case "costConv":      return rowCostConv(r);
@@ -82,11 +100,11 @@ function cellValue(r: SeguimientoRow, key: string): string {
     case "roas":
       return rowRoas(r) > 0 ? formatRoas(rowRoas(r)) : "—";
     case "purchases":
-      return r.purchases > 0 ? formatCompact(r.purchases) : "—";
+      return rowPurchases(r) > 0 ? formatCompact(rowPurchases(r)) : "—";
     case "cpa":
       return rowCpa(r) > 0 ? formatCurrencyCompact(rowCpa(r)) : "—";
     case "leads":
-      return r.leads > 0 ? formatCompact(r.leads) : "—";
+      return rowLeads(r) > 0 ? formatCompact(rowLeads(r)) : "—";
     case "cpl":
       return rowCpl(r) > 0 ? formatCurrencyCompact(rowCpl(r)) : "—";
     case "conversations":
