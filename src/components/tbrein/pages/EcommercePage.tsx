@@ -8,6 +8,7 @@ import type { SeguimientoPayload, SeguimientoRow } from "@/lib/seguimientoApi";
 import {
   aggSpend, aggPurchaseValue, aggROAS, aggPurchases,
   aggCPA, aggCTR, aggCPM, aggImpressions,
+  aggCustomConversions, aggCustomConversionValue, aggCustomCPA, aggCustomROAS,
   deltaPct, aggClicks, aggFrequency,
 } from "@/lib/seguimientoApi";
 import { KPIGrid, type KPIDef } from "../scorecards/KPIGrid";
@@ -50,6 +51,21 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
   const cpm           = aggCPM(c);
   const impressions   = aggImpressions(c);
 
+  // Custom conversions — used as fallback when no standard purchases are tracked
+  const customConvs      = aggCustomConversions(c);
+  const customConvValue  = aggCustomConversionValue(c);
+  const customCpa        = aggCustomCPA(c);
+  const customRoas       = aggCustomROAS(c);
+
+  // "conv mode": the account uses custom conversions instead of standard purchases
+  const useCustomConvs = purchases === 0 && customConvs > 0;
+
+  // Effective conversion metrics (standard or custom)
+  const effConversions  = useCustomConvs ? customConvs      : purchases;
+  const effRevenue      = useCustomConvs ? customConvValue  : revenue;
+  const effCpa          = useCustomConvs ? customCpa        : cpa;
+  const effRoas         = useCustomConvs ? customRoas       : roas;
+
   const pSpend        = p ? aggSpend(p) : undefined;
   const pRevenue      = p ? aggPurchaseValue(p) : undefined;
   const pRoas         = p ? aggROAS(p) : undefined;
@@ -58,6 +74,14 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
   const pCtr          = p ? aggCTR(p) : undefined;
   const pCpm          = p ? aggCPM(p) : undefined;
   const pImpressions  = p ? aggImpressions(p) : undefined;
+
+  const pCustomConvs  = p ? aggCustomConversions(p) : undefined;
+  const pCustomCpa    = p ? aggCustomCPA(p)         : undefined;
+  const pCustomRoas   = p ? aggCustomROAS(p)        : undefined;
+
+  const pEffConversions = useCustomConvs ? pCustomConvs : pPurchases;
+  const pEffCpa         = useCustomConvs ? pCustomCpa   : pCpa;
+  const pEffRoas        = useCustomConvs ? pCustomRoas  : pRoas;
 
   // ── Top 6 KPIs (3×2 grid) ───────────────────────────────────────────────
   const topKpis: KPIDef[] = [
@@ -71,10 +95,10 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
       higherIsBetter:  false,
     },
     {
-      label:           "Ingresos",
-      value:           revenue > 0 ? formatCurrencyCompact(revenue) : "—",
-      delta:           revenue > 0 ? dp(revenue, pRevenue, compareEnabled) : null,
-      prevLabel:       prevLbl(pRevenue, formatCurrencyCompact, compareEnabled),
+      label:           effRevenue > 0 ? "Ingresos" : "Ingresos",
+      value:           effRevenue > 0 ? formatCurrencyCompact(effRevenue) : "—",
+      delta:           effRevenue > 0 ? dp(effRevenue, useCustomConvs ? undefined : pRevenue, compareEnabled) : null,
+      prevLabel:       !useCustomConvs ? prevLbl(pRevenue, formatCurrencyCompact, compareEnabled) : undefined,
       icon:            <TrendingUp className="w-3.5 h-3.5" />,
       msIcon:          "trending_up",
       higherIsBetter:  true,
@@ -82,27 +106,27 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
     },
     {
       label:           "ROAS",
-      value:           roas > 0 ? formatRoas(roas) : "—",
-      delta:           roas > 0 ? dp(roas, pRoas, compareEnabled) : null,
-      prevLabel:       prevLbl(pRoas, formatRoas, compareEnabled),
+      value:           effRoas > 0 ? formatRoas(effRoas) : "—",
+      delta:           effRoas > 0 ? dp(effRoas, pEffRoas, compareEnabled) : null,
+      prevLabel:       prevLbl(pEffRoas, formatRoas, compareEnabled),
       icon:            <TrendingUp className="w-3.5 h-3.5" />,
       msIcon:          "moving",
       higherIsBetter:  true,
     },
     {
-      label:           "Compras",
-      value:           purchases > 0 ? formatCompact(purchases) : "—",
-      delta:           purchases > 0 ? dp(purchases, pPurchases, compareEnabled) : null,
-      prevLabel:       prevLbl(pPurchases, formatCompact, compareEnabled),
+      label:           useCustomConvs ? "Conversiones" : "Compras",
+      value:           effConversions > 0 ? formatCompact(effConversions) : "—",
+      delta:           effConversions > 0 ? dp(effConversions, pEffConversions, compareEnabled) : null,
+      prevLabel:       prevLbl(pEffConversions, formatCompact, compareEnabled),
       icon:            <ShoppingCart className="w-3.5 h-3.5" />,
-      msIcon:          "shopping_cart",
+      msIcon:          useCustomConvs ? "conversion_path" : "shopping_cart",
       higherIsBetter:  true,
     },
     {
       label:           "CPA",
-      value:           cpa > 0 ? formatCurrencyCompact(cpa) : "—",
-      delta:           cpa > 0 ? dp(cpa, pCpa, compareEnabled) : null,
-      prevLabel:       prevLbl(pCpa, formatCurrencyCompact, compareEnabled),
+      value:           effCpa > 0 ? formatCurrencyCompact(effCpa) : "—",
+      delta:           effCpa > 0 ? dp(effCpa, pEffCpa, compareEnabled) : null,
+      prevLabel:       prevLbl(pEffCpa, formatCurrencyCompact, compareEnabled),
       icon:            <ShoppingCart className="w-3.5 h-3.5" />,
       msIcon:          "price_change",
       higherIsBetter:  false,
@@ -159,10 +183,12 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
   // ── Time-series aggregation functions ────────────────────────────────────
   const fmtCurrency = (v: number) => formatCurrencyCompact(v);
   const fmtRoasNum  = (v: number) => formatRoas(v);
+  const fmtCount    = (v: number) => formatCompact(v);
 
-  const aggSpendFn = (rows: SeguimientoRow[]) => aggSpend(rows);
-  const aggRoasFn  = (rows: SeguimientoRow[]) => aggROAS(rows);
-  const aggCpaFn   = (rows: SeguimientoRow[]) => aggCPA(rows);
+  const aggSpendFn       = (rows: SeguimientoRow[]) => aggSpend(rows);
+  const aggRoasFn        = (rows: SeguimientoRow[]) => useCustomConvs ? aggCustomROAS(rows) : aggROAS(rows);
+  const aggCpaFn         = (rows: SeguimientoRow[]) => useCustomConvs ? aggCustomCPA(rows)  : aggCPA(rows);
+  const aggCustomConvsFn = (rows: SeguimientoRow[]) => aggCustomConversions(rows);
 
   // ── ROAS placeholder note ─────────────────────────────────────────────────
   // Future: "ROAS TBREIN" = compras atribuidas a campañas TBREIN / gasto total
@@ -170,6 +196,20 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
 
   return (
     <div className="flex flex-col gap-6">
+
+      {/* ─── Aviso conversiones personalizadas ───────────────────────────── */}
+      {useCustomConvs && (
+        <div
+          className="rounded-xl border px-4 py-3 text-xs flex items-center gap-2"
+          style={{ borderColor: "#1e3d6e", background: "#0a1b30", color: "#a4c9ff" }}
+        >
+          <span className="material-symbols-outlined shrink-0" style={{ fontSize: "14px" }}>
+            conversion_path
+          </span>
+          Se detectaron <strong>conversiones personalizadas</strong> como KPI principal.
+          Los valores de "Conversiones" y "CPA" corresponden a tus eventos de conversión custom configurados en Meta.
+        </div>
+      )}
 
       {/* ─── 6 KPI scorecards 3×2 ─────────────────────────────────────────── */}
       <section>
@@ -287,7 +327,7 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
       </section>
 
       {/* ─── ROAS en el tiempo ────────────────────────────────────────────── */}
-      {roas > 0 && (
+      {effRoas > 0 && (
         <section>
           <MetricTimeline
             data={data.timeSeries}
@@ -302,8 +342,8 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
         </section>
       )}
 
-      {/* ─── CPA en el tiempo (si hay compras) ───────────────────────────── */}
-      {purchases > 0 && (
+      {/* ─── CPA en el tiempo ────────────────────────────────────────────── */}
+      {effConversions > 0 && (
         <section>
           <MetricTimeline
             data={data.timeSeries}
@@ -312,6 +352,22 @@ export function EcommercePage({ data, prevData, compareEnabled }: Props) {
             formatValue={fmtCurrency}
             yTickFmt={fmtCurrency}
             color="#f97316"
+            allowMAToggle
+            allowViewToggle
+          />
+        </section>
+      )}
+
+      {/* ─── Conversiones personalizadas en el tiempo ────────────────────── */}
+      {useCustomConvs && (
+        <section>
+          <MetricTimeline
+            data={data.timeSeries}
+            title="Conversiones en el tiempo"
+            aggregateFn={aggCustomConvsFn}
+            formatValue={fmtCount}
+            yTickFmt={fmtCount}
+            color="#a4c9ff"
             allowMAToggle
             allowViewToggle
           />

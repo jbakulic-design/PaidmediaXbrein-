@@ -105,23 +105,25 @@ export function isMessagesObjective(obj?: string): boolean {
 // ─── Row types ───────────────────────────────────────────────────────────────
 
 export interface SeguimientoRow {
-  campaignId:    string;
-  campaignName:  string;
-  adsetId?:      string;
-  adsetName?:    string;
-  objective?:    string;
-  spend:         number;
-  impressions:   number;
-  reach:         number;
-  clicks:        number;
-  ctr:           number;
-  cpm:           number;
-  frequency:     number;
-  leads:         number;
-  purchases:     number;
-  purchaseValue: number;
-  conversations: number;
-  date?:         string; // only set in timeSeries rows
+  campaignId:           string;
+  campaignName:         string;
+  adsetId?:             string;
+  adsetName?:           string;
+  objective?:           string;
+  spend:                number;
+  impressions:          number;
+  reach:                number;
+  clicks:               number;
+  ctr:                  number;
+  cpm:                  number;
+  frequency:            number;
+  leads:                number;
+  purchases:            number;
+  purchaseValue:        number;
+  conversations:        number;
+  customConversions:    number; // sum of offsite_conversion.custom.* types
+  customConversionValue:number; // associated revenue for custom conversions
+  date?:                string; // only set in timeSeries rows
 }
 
 export interface SeguimientoPayload {
@@ -174,6 +176,16 @@ export function aggCostPerConv(rows: SeguimientoRow[]): number {
   const conv = aggConversations(rows);
   return conv > 0 ? aggSpend(rows) / conv : 0;
 }
+export function aggCustomConversions(rows: SeguimientoRow[])     { return sumField(rows, "customConversions"); }
+export function aggCustomConversionValue(rows: SeguimientoRow[]) { return sumField(rows, "customConversionValue"); }
+export function aggCustomCPA(rows: SeguimientoRow[]): number {
+  const conv = aggCustomConversions(rows);
+  return conv > 0 ? aggSpend(rows) / conv : 0;
+}
+export function aggCustomROAS(rows: SeguimientoRow[]): number {
+  const spend = aggSpend(rows);
+  return spend > 0 ? aggCustomConversionValue(rows) / spend : 0;
+}
 
 /** Delta % between current and previous. null when prev is 0. */
 export function deltaPct(current: number, previous: number): number | null {
@@ -203,6 +215,50 @@ interface RawInsight {
 function pn(v?: string): number {
   return v ? parseFloat(v) || 0 : 0;
 }
+
+/**
+ * Action types already captured in leads / purchases / conversations.
+ * Custom conversions that match these are skipped to avoid double-counting.
+ */
+const STANDARD_ACTION_TYPES = new Set([
+  "lead", "onsite_conversion.lead_grouped", "leadgen_grouped", "leadgen.grouped",
+  "offsite_conversion.fb_pixel_lead", "contact_total", "complete_registration",
+  "purchase", "offsite_conversion.fb_pixel_purchase", "omni_purchase",
+  "offsite_conversion.fb_pixel_complete_registration",
+  "onsite_conversion.messaging_conversation_started_7d",
+  "onsite_conversion.messaging_conversation_started_1d",
+  "onsite_conversion.total_messaging_connection",
+  "onsite_conversion.messaging_first_reply",
+  "messaging_conversation_started_7d",
+  "messaging_conversation_started_1d",
+]);
+
+/**
+ * Sums every custom-conversion action type not already covered by standard fields.
+ * Custom conversions arrive as: offsite_conversion.custom.{ID}
+ * or offsite_conversion.fb_pixel_custom.{ID}
+ */
+function getCustomConversions(
+  arr: { action_type: string; value: string }[] | undefined
+): number {
+  if (!arr) return 0;
+  let total = 0;
+  const seen = new Set<string>();
+  for (const item of arr) {
+    if (STANDARD_ACTION_TYPES.has(item.action_type)) continue;
+    if (seen.has(item.action_type)) continue;
+    if (
+      item.action_type.startsWith("offsite_conversion.custom.") ||
+      item.action_type.startsWith("offsite_conversion.fb_pixel_custom") ||
+      item.action_type.includes("custom_conversion")
+    ) {
+      seen.add(item.action_type);
+      total += parseFloat(item.value) || 0;
+    }
+  }
+  return total;
+}
+
 /**
  * Returns the MAXIMUM value found across all matching action types.
  * Using max (not first-match) avoids the case where a minor action type
@@ -319,6 +375,8 @@ function parseRow(
       "messaging_conversation_started_7d",
       "messaging_conversation_started_1d"
     ),
+    customConversions:     getCustomConversions(r.actions),
+    customConversionValue: getCustomConversions(r.action_values),
     date: r.date_start,
   };
 }
