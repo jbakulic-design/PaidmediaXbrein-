@@ -4,11 +4,15 @@ import {
   Menu, X, ChevronDown,
   Loader2, Search, RefreshCw, Zap,
   ShoppingCart, Users, MessageCircle,
+  Calendar, Bookmark, BookmarkCheck, Trash2, Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import type { MetaAdAccount, DatePreset } from "@/lib/metaApi";
 import { DATE_PRESET_LABELS } from "@/lib/metaApi";
+import type { DateRange, SeguimientoPreset } from "@/lib/seguimientoApi";
+import { SEGUIMIENTO_PRESET_LABELS, presetToRange } from "@/lib/seguimientoApi";
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -242,6 +246,207 @@ function MetaQuickPanel({ s }: { s: MetaQuickSettings }) {
   );
 }
 
+// ── SeguimientoSidePanel ──────────────────────────────────────────────────────
+
+interface SavedRange { id: string; label: string; since: string; until: string; }
+const SEG_SAVED_KEY = "tbrein_saved_ranges";
+function loadSaved(): SavedRange[] {
+  if (typeof window === "undefined") return [];
+  try { return JSON.parse(localStorage.getItem(SEG_SAVED_KEY) ?? "[]"); } catch { return []; }
+}
+function persistSaved(r: SavedRange[]) { localStorage.setItem(SEG_SAVED_KEY, JSON.stringify(r)); }
+function nanoid6() { return Math.random().toString(36).slice(2, 8); }
+function fmtD(s: string) { const [y,m,d] = s.split("-"); return `${parseInt(d)}/${parseInt(m)}/${y.slice(2)}`; }
+
+export interface SeguimientoQuickSettings {
+  accounts:        MetaAdAccount[];
+  accountId:       string;
+  onAccount:       (id: string) => void;
+  preset:          SeguimientoPreset;
+  range:           DateRange;
+  onRange:         (range: DateRange, preset: SeguimientoPreset) => void;
+  compareEnabled:  boolean;
+  onCompareToggle: (v: boolean) => void;
+  loading?:        boolean;
+}
+
+const SEG_PRESET_KEYS = (Object.keys(SEGUIMIENTO_PRESET_LABELS) as SeguimientoPreset[]).filter(k => k !== "custom");
+
+function SeguimientoPanel({ s }: { s: SeguimientoQuickSettings }) {
+  const [showCustom,    setShowCustom]    = useState(false);
+  const [customSince,   setCustomSince]   = useState(s.range.since);
+  const [customUntil,   setCustomUntil]   = useState(s.range.until);
+  const [savedRanges,   setSavedRanges]   = useState<SavedRange[]>([]);
+  const [showSaveForm,  setShowSaveForm]  = useState(false);
+  const [saveName,      setSaveName]      = useState("");
+  const [activeSavedId, setActiveSavedId] = useState<string | null>(null);
+
+  useEffect(() => { setSavedRanges(loadSaved()); }, []);
+
+  function handlePreset(p: SeguimientoPreset) {
+    setShowCustom(false); setActiveSavedId(null);
+    s.onRange(presetToRange(p), p);
+  }
+  function applyCustom() {
+    if (customSince && customUntil && customSince <= customUntil) {
+      s.onRange({ since: customSince, until: customUntil }, "custom");
+      setShowCustom(false); setActiveSavedId(null); setShowSaveForm(true); setSaveName("");
+    }
+  }
+  function handleSaved(sr: SavedRange) {
+    setActiveSavedId(sr.id); setShowCustom(false); setShowSaveForm(false);
+    s.onRange({ since: sr.since, until: sr.until }, "custom");
+  }
+  function saveRange() {
+    const label = saveName.trim(); if (!label) return;
+    const nr: SavedRange = { id: nanoid6(), label, since: s.range.since, until: s.range.until };
+    const next = [...savedRanges, nr]; setSavedRanges(next); persistSaved(next);
+    setActiveSavedId(nr.id); setSaveName(""); setShowSaveForm(false);
+  }
+  function delSaved(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    const next = savedRanges.filter(r => r.id !== id); setSavedRanges(next); persistSaved(next);
+    if (activeSavedId === id) setActiveSavedId(null);
+  }
+
+  const alreadySaved = savedRanges.some(r => r.since === s.range.since && r.until === s.range.until);
+  const rangeDisplay = `${fmtD(s.range.since)} – ${fmtD(s.range.until)}`;
+
+  return (
+    <div className="mx-2 mb-1 rounded-lg border border-outline-variant bg-surface-container-high p-2.5 flex flex-col gap-2.5">
+
+      {/* Account */}
+      <div className="flex flex-col gap-1">
+        <label className="text-[10px] font-semibold uppercase tracking-wide text-on-surface-variant">Cuenta</label>
+        <select
+          value={s.accountId}
+          onChange={e => s.onAccount(e.target.value)}
+          className="rounded-lg border border-outline-variant bg-surface-container px-2 py-1 text-xs text-on-surface outline-none focus:ring-1 focus:ring-primary/40"
+        >
+          {!s.accountId && <option value="" disabled>— Seleccioná —</option>}
+          {s.accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+        </select>
+      </div>
+
+      {/* Presets */}
+      <div className="flex flex-col gap-1">
+        <label className="text-[10px] font-semibold uppercase tracking-wide text-on-surface-variant">Período</label>
+        <div className="flex flex-wrap gap-1">
+          {SEG_PRESET_KEYS.map(p => (
+            <button
+              key={p}
+              onClick={() => handlePreset(p)}
+              className={cn(
+                "px-2 py-0.5 rounded-md text-[10px] font-medium transition border",
+                s.preset === p && !showCustom && !activeSavedId
+                  ? "bg-primary/15 text-primary border-primary/30"
+                  : "border-outline-variant text-on-surface-variant hover:bg-surface-variant/50"
+              )}
+            >
+              {SEGUIMIENTO_PRESET_LABELS[p]}
+            </button>
+          ))}
+          <button
+            onClick={() => { setShowCustom(v => !v); setShowSaveForm(false); }}
+            className={cn(
+              "flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-medium transition border",
+              showCustom ? "bg-primary/15 text-primary border-primary/30"
+                         : "border-outline-variant text-on-surface-variant hover:bg-surface-variant/50"
+            )}
+          >
+            <Calendar className="w-2.5 h-2.5" />
+            Custom
+          </button>
+        </div>
+
+        {/* Custom inputs */}
+        <AnimatePresence initial={false}>
+          {showCustom && (
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.16 }} className="overflow-hidden">
+              <div className="flex flex-col gap-1 pt-1">
+                <input type="date" value={customSince} max={customUntil} onChange={e => setCustomSince(e.target.value)}
+                  className="rounded-md border border-outline-variant bg-surface-container px-2 py-1 text-[10px] text-on-surface outline-none focus:ring-1 focus:ring-primary/40" />
+                <input type="date" value={customUntil} min={customSince} onChange={e => setCustomUntil(e.target.value)}
+                  className="rounded-md border border-outline-variant bg-surface-container px-2 py-1 text-[10px] text-on-surface outline-none focus:ring-1 focus:ring-primary/40" />
+                <button onClick={applyCustom} disabled={!customSince || !customUntil || customSince > customUntil}
+                  className="w-full py-1 rounded-md text-[10px] font-semibold bg-primary text-on-primary hover:opacity-90 disabled:opacity-50 transition">
+                  Aplicar
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Range display */}
+        <p className="text-[10px] font-mono text-on-surface-variant">{rangeDisplay}{s.loading && " ·  "}{s.loading && <span className="text-primary animate-pulse">cargando…</span>}</p>
+
+        {/* Saved ranges */}
+        {savedRanges.length > 0 && (
+          <div className="flex flex-wrap gap-1 pt-0.5">
+            {savedRanges.map(sr => (
+              <button key={sr.id} onClick={() => handleSaved(sr)}
+                title={`${fmtD(sr.since)} – ${fmtD(sr.until)}`}
+                className={cn(
+                  "group flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium transition border",
+                  activeSavedId === sr.id
+                    ? "bg-secondary/15 text-secondary border-secondary/30"
+                    : "border-outline-variant text-on-surface-variant hover:bg-surface-variant/50"
+                )}>
+                <Bookmark className="w-2.5 h-2.5 shrink-0" />
+                {sr.label}
+                <span onClick={e => delSaved(sr.id, e)} className="opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity">
+                  <Trash2 className="w-2 h-2 text-error" />
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Save form */}
+        <AnimatePresence initial={false}>
+          {showSaveForm && s.preset === "custom" && !alreadySaved && (
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.16 }} className="overflow-hidden">
+              <div className="flex flex-col gap-1 pt-1 pb-0.5">
+                <p className="text-[10px] text-on-surface-variant flex items-center gap-1"><BookmarkCheck className="w-3 h-3 text-secondary" />Guardar <strong>{rangeDisplay}</strong></p>
+                <div className="flex gap-1">
+                  <input type="text" placeholder="Nombre…" value={saveName} maxLength={24}
+                    onChange={e => setSaveName(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") saveRange(); if (e.key === "Escape") setShowSaveForm(false); }}
+                    autoFocus
+                    className="flex-1 rounded-md border border-outline-variant bg-surface-container px-2 py-1 text-[10px] text-on-surface outline-none focus:ring-1 focus:ring-secondary/40" />
+                  <button onClick={saveRange} disabled={!saveName.trim()}
+                    className="flex items-center gap-0.5 px-2 py-1 rounded-md text-[10px] font-semibold bg-secondary/20 text-secondary border border-secondary/30 disabled:opacity-40 hover:bg-secondary/30 transition">
+                    <Plus className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+                <button onClick={() => setShowSaveForm(false)} className="text-[9px] text-on-surface-variant hover:underline self-end">Omitir</button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Save link */}
+        {s.preset === "custom" && !alreadySaved && !showSaveForm && (
+          <button onClick={() => { setShowSaveForm(true); setSaveName(""); }}
+            className="self-start flex items-center gap-1 text-[10px] text-on-surface-variant hover:underline">
+            <Bookmark className="w-2.5 h-2.5" />Guardar rango
+          </button>
+        )}
+      </div>
+
+      {/* Compare toggle */}
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-on-surface-variant">Comparar período ant.</span>
+        <button onClick={() => s.onCompareToggle(!s.compareEnabled)} className="flex items-center">
+          <span className={cn("w-7 h-3.5 rounded-full flex items-center px-0.5 transition-colors", s.compareEnabled ? "bg-primary" : "bg-outline-variant")}>
+            <span className={cn("w-2.5 h-2.5 rounded-full bg-white transition-transform", s.compareEnabled ? "translate-x-3.5" : "translate-x-0")} />
+          </span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── SidebarProps ──────────────────────────────────────────────────────────────
 
 interface SidebarProps {
@@ -255,6 +460,7 @@ interface SidebarProps {
   campaignType:     CampaignType;
   onCampaignType:   (t: CampaignType) => void;
   metaQuick?:       MetaQuickSettings;
+  seguimientoQuick?: SeguimientoQuickSettings;
   onLogout:         () => void;
 }
 
@@ -264,7 +470,7 @@ function NavContent(props: SidebarProps & { onClose?: () => void }) {
   const {
     mainTab, analysisTab, onMainTab, onAnalysisTab,
     hasData, hasMetaConnection, reportsCount,
-    metaQuick, onLogout, onClose,
+    metaQuick, seguimientoQuick, onLogout, onClose,
   } = props;
 
   return (
@@ -375,7 +581,7 @@ function NavContent(props: SidebarProps & { onClose?: () => void }) {
           onClick={() => { onMainTab("support"); onClose?.(); }}
         />
 
-        {/* Meta connection panel */}
+        {/* Meta connection panel (Análisis) */}
         {metaQuick && (
           <>
             <div className="my-2 border-t border-outline-variant" />
@@ -383,6 +589,17 @@ function NavContent(props: SidebarProps & { onClose?: () => void }) {
               Conexión Meta
             </p>
             <MetaQuickPanel s={metaQuick} />
+          </>
+        )}
+
+        {/* Seguimiento TBREIN filters (visible only on seguimiento tab) */}
+        {seguimientoQuick && mainTab === "seguimiento" && (
+          <>
+            <div className="my-2 border-t border-outline-variant" />
+            <p className="px-4 pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-on-surface-variant">
+              Conexión Meta
+            </p>
+            <SeguimientoPanel s={seguimientoQuick} />
           </>
         )}
       </nav>

@@ -28,17 +28,35 @@ interface Props {
   token:             string;
   accounts:          MetaAdAccount[];
   defaultAccountId?: string;
+  // Externally controlled (from sidebar) — when provided, override internal state
+  extAccountId?:       string;
+  extPreset?:          SeguimientoPreset;
+  extRange?:           DateRange;
+  extCompareEnabled?:  boolean;
+  onExtAccountChange?: (id: string) => void;
+  onExtRangeChange?:   (range: DateRange, preset: SeguimientoPreset) => void;
+  onExtCompareToggle?: (v: boolean) => void;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export function TbreinDashboard({ token, accounts, defaultAccountId }: Props) {
-  // ── Filters state ──────────────────────────────────────────────────────
-  const [accountId,      setAccountId]      = useState(defaultAccountId ?? "");
-  const [preset,         setPreset]         = useState<SeguimientoPreset>("last_30d");
-  const [range,          setRange]          = useState<DateRange>(() => presetToRange("last_30d"));
-  const [compareEnabled, setCompareEnabled] = useState(true);
-  const [activeTab,      setActiveTab]      = useState<ActiveTab>("leads");
+export function TbreinDashboard({
+  token, accounts, defaultAccountId,
+  extAccountId, extPreset, extRange, extCompareEnabled,
+  onExtAccountChange, onExtRangeChange, onExtCompareToggle,
+}: Props) {
+  // ── Filters state — internal fallback when no external control ─────────
+  const [intAccountId,      setIntAccountId]      = useState(defaultAccountId ?? "");
+  const [intPreset,         setIntPreset]         = useState<SeguimientoPreset>("last_30d");
+  const [intRange,          setIntRange]          = useState<DateRange>(() => presetToRange("last_30d"));
+  const [intCompareEnabled, setIntCompareEnabled] = useState(true);
+  const [activeTab,         setActiveTab]         = useState<ActiveTab>("leads");
+
+  // Use external values if provided, otherwise internal
+  const accountId      = extAccountId      ?? intAccountId;
+  const preset         = extPreset         ?? intPreset;
+  const range          = extRange          ?? intRange;
+  const compareEnabled = extCompareEnabled ?? intCompareEnabled;
 
   // ── Data state ─────────────────────────────────────────────────────────
   const [data,     setData]     = useState<SeguimientoPayload | null>(null);
@@ -85,18 +103,20 @@ export function TbreinDashboard({ token, accounts, defaultAccountId }: Props) {
 
   // ── Handlers ───────────────────────────────────────────────────────────
   function handleRange(newRange: DateRange, newPreset: SeguimientoPreset) {
-    setRange(newRange);
-    setPreset(newPreset);
-    fetchKeyRef.current = ""; // force re-fetch on manual range change
+    if (onExtRangeChange) onExtRangeChange(newRange, newPreset);
+    else { setIntRange(newRange); setIntPreset(newPreset); }
+    fetchKeyRef.current = "";
   }
 
   function handleAccount(id: string) {
-    setAccountId(id);
+    if (onExtAccountChange) onExtAccountChange(id);
+    else setIntAccountId(id);
     fetchKeyRef.current = "";
   }
 
   function handleCompareToggle(v: boolean) {
-    setCompareEnabled(v);
+    if (onExtCompareToggle) onExtCompareToggle(v);
+    else setIntCompareEnabled(v);
     fetchKeyRef.current = "";
   }
 

@@ -38,6 +38,9 @@ import type { GitHubConfig } from "@/lib/githubStorage";
 import { nanoid } from "@/lib/utils";
 import { fetchCampaignInsights, fetchAdAccounts, type MetaAdAccount, type DatePreset } from "@/lib/metaApi";
 import { useFacebookSDK, saveSelectedAccount, loadSelectedAccount } from "@/lib/useFacebookSDK";
+import type { DateRange, SeguimientoPreset } from "@/lib/seguimientoApi";
+import { presetToRange } from "@/lib/seguimientoApi";
+import { SeguimientoQuickSettings } from "@/components/Sidebar";
 import {
   DollarSign, TrendingUp, Users,
   MousePointerClick, ShoppingCart, Zap,
@@ -77,6 +80,17 @@ export default function Dashboard() {
   const [metaError, setMetaError] = useState("");
 
   const [metaDatePreset, setMetaDatePreset] = useState<DatePreset>("last_30d");
+
+  // ── TBREIN Seguimiento state (lifted so sidebar can control it) ──────────
+  const [tbreinAccountId,      setTbreinAccountId]      = useState("");
+  const [tbreinPreset,         setTbreinPreset]         = useState<SeguimientoPreset>("last_30d");
+  const [tbreinRange,          setTbreinRange]          = useState<DateRange>(() => presetToRange("last_30d"));
+  const [tbreinCompareEnabled, setTbreinCompareEnabled] = useState(true);
+
+  function handleTbreinRange(range: DateRange, preset: SeguimientoPreset) {
+    setTbreinRange(range);
+    setTbreinPreset(preset);
+  }
   const [metaLevel, setMetaLevel] = useState<"campaign" | "adset" | "ad">("campaign");
 
   // Cuentas y cuenta seleccionada (disponibles antes del primer load)
@@ -260,6 +274,16 @@ export default function Dashboard() {
         campaignType={campaignType}
         onCampaignType={setCampaignType}
         onLogout={logout}
+        seguimientoQuick={earlyToken ? {
+          accounts:        earlyAccounts,
+          accountId:       tbreinAccountId,
+          onAccount:       setTbreinAccountId,
+          preset:          tbreinPreset,
+          range:           tbreinRange,
+          onRange:         handleTbreinRange,
+          compareEnabled:  tbreinCompareEnabled,
+          onCompareToggle: setTbreinCompareEnabled,
+        } : undefined}
         metaQuick={earlyToken && mainTab !== "seguimiento" ? {
           accountName: earlyAccounts.find((a) => a.id === selectedAccountId)?.name ?? metaConnection?.accountName ?? "",
           accountId: selectedAccountId,
@@ -523,7 +547,14 @@ export default function Dashboard() {
             <TbreinDashboard
               token={earlyToken ?? ""}
               accounts={earlyAccounts}
-              defaultAccountId={selectedAccountId || undefined}
+              defaultAccountId={tbreinAccountId || selectedAccountId || undefined}
+              extAccountId={tbreinAccountId || undefined}
+              extPreset={tbreinPreset}
+              extRange={tbreinRange}
+              extCompareEnabled={tbreinCompareEnabled}
+              onExtAccountChange={setTbreinAccountId}
+              onExtRangeChange={handleTbreinRange}
+              onExtCompareToggle={setTbreinCompareEnabled}
             />
           )}
 
