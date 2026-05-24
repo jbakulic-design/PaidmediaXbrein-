@@ -1,12 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { Loader2, Presentation, X, Check } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Loader2, Presentation, ArrowLeft, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { KPIDef } from "./scorecards/KPIGrid";
-import type { SeguimientoRow } from "@/lib/seguimientoApi";
-import { aggSpend } from "@/lib/seguimientoApi";
+import type { SeguimientoPayload, SeguimientoRow } from "@/lib/seguimientoApi";
+import {
+  aggSpend, aggLeads, aggCPL, aggCTR,
+  aggCustomConversions, aggCustomCPA,
+  aggImpressions, aggFrequency, aggClicks,
+  isLeadObjective,
+} from "@/lib/seguimientoApi";
+import { formatCurrencyCompact, formatCompact, formatPercent } from "@/lib/utils";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -18,43 +22,46 @@ interface SlideOption {
 }
 
 const SLIDE_OPTIONS: SlideOption[] = [
-  { id: "cover",          label: "Portada",                   description: "Slide con nombre de cuenta y período",          icon: "🎯" },
-  { id: "kpis",           label: "Métricas clave",            description: "Slide con las KPIs seleccionadas en grid",      icon: "📊" },
-  { id: "cost_chart",     label: "Evolución de costo/conv.",  description: "Gráfico de barras con evolución temporal",       icon: "💰" },
-  { id: "conv_chart",     label: "Evolución de conversiones", description: "Gráfico de barras con conversiones en el tiempo",icon: "👥" },
-  { id: "spend_chart",    label: "Evolución de gasto",        description: "Gráfico de barras con gasto por día",            icon: "📈" },
-  { id: "campaign_table", label: "Tabla de campañas",         description: "Tabla con métricas por campaña",                 icon: "📋" },
+  { id: "cover",          label: "Portada",                   description: "Nombre de cuenta y período",             icon: "🎯" },
+  { id: "kpis",           label: "Métricas clave",            description: "Grid con KPIs del período seleccionado", icon: "📊" },
+  { id: "cost_chart",     label: "Evolución de costo/conv.",  description: "Gráfico de barras temporal",             icon: "💰" },
+  { id: "conv_chart",     label: "Evolución de conversiones", description: "Conversiones día a día",                 icon: "👥" },
+  { id: "spend_chart",    label: "Evolución de gasto",        description: "Gasto diario",                          icon: "📈" },
+  { id: "campaign_table", label: "Tabla de campañas",         description: "Comparativa por campaña",               icon: "📋" },
 ];
 
-export interface PresentationExportProps {
-  kpiDefs:      KPIDef[];
-  timeSeries:   SeguimientoRow[];
-  campaignRows: SeguimientoRow[];
+interface Props {
+  data:        SeguimientoPayload;
   accountName?: string;
-  dateRange:    { since: string; until: string };
-  aggLeadsFn:   (rows: SeguimientoRow[]) => number;
-  aggCplFn:     (rows: SeguimientoRow[]) => number;
-  spend:        number;
-  leadsTotal:   number;
-  cplTotal:     number;
+  dateRange:   { since: string; until: string };
+  onClose:     () => void;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const DARK_BG  = "0f172a";
-const BLUE     = "3b82f6";
-const TEXT_W   = "f1f5f9";
-const GRAY     = "94a3b8";
-const CARD_BG  = "1e293b";
-const GREEN    = "34d399";
-const PURPLE   = "a78bfa";
+const DARK_BG = "0f172a";
+const BLUE    = "3b82f6";
+const TEXT_W  = "f1f5f9";
+const GRAY    = "94a3b8";
+const CARD_BG = "1e293b";
+const GREEN   = "34d399";
+const PURPLE  = "a78bfa";
 
 function fmtDate(s: string) {
   const [y, m, d] = s.split("-");
   return `${parseInt(d)}/${parseInt(m)}/${y}`;
 }
 
-// Group time-series rows by date for chart data
+function leadRows(rows: SeguimientoRow[]): SeguimientoRow[] {
+  const ids = new Set<string>();
+  for (const r of rows) {
+    if (isLeadObjective(r.objective) || r.leads > 0 || r.customConversions > 0)
+      ids.add(r.campaignId);
+  }
+  if (ids.size === 0) return rows;
+  return rows.filter(r => ids.has(r.campaignId));
+}
+
 function buildDailyData(
   ts: SeguimientoRow[],
   valueFn: (rows: SeguimientoRow[]) => number
@@ -69,260 +76,178 @@ function buildDailyData(
   const sorted = [...byDate.keys()].sort();
   return {
     labels: sorted.map(fmtDate),
-    values: sorted.map((d) => valueFn(byDate.get(d)!)),
+    values: sorted.map(d => valueFn(byDate.get(d)!)),
   };
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+// ── Component ─────────────────────────────────────────────────────────────────
 
-export function PresentationExport({
-  kpiDefs,
-  timeSeries,
-  campaignRows,
-  accountName,
-  dateRange,
-  aggLeadsFn,
-  aggCplFn,
-  spend,
-  leadsTotal,
-  cplTotal,
-}: PresentationExportProps) {
-  const [open,       setOpen]       = useState(false);
-  const [selected,   setSelected]   = useState<Set<string>>(new Set(SLIDE_OPTIONS.map((o) => o.id)));
+export function PresentationExport({ data, accountName, dateRange, onClose }: Props) {
+  const [selected,   setSelected]   = useState<Set<string>>(new Set(SLIDE_OPTIONS.map(o => o.id)));
   const [generating, setGenerating] = useState(false);
   const [error,      setError]      = useState("");
+  const [done,       setDone]       = useState(false);
 
-  function toggleOption(id: string) {
-    setSelected((prev) => {
+  // Compute metrics from data
+  const c  = useMemo(() => leadRows(data.campaigns),  [data]);
+  const ts = useMemo(() => leadRows(data.timeSeries), [data]);
+
+  const spend       = aggSpend(c);
+  const leadsNative = aggLeads(c);
+  const cplNative   = aggCPL(c);
+  const ctr         = aggCTR(c);
+  const impressions = aggImpressions(c);
+  const frequency   = aggFrequency(c);
+  const clicks      = aggClicks(c);
+  const cpc         = clicks > 0 ? spend / clicks : 0;
+  const customConvs = aggCustomConversions(c);
+  const customCpa   = aggCustomCPA(c);
+
+  const kpiRows = useMemo(() => [
+    { label: "Gasto total",    value: formatCurrencyCompact(spend) },
+    { label: "Leads",          value: leadsNative > 0 ? formatCompact(leadsNative) : (customConvs > 0 ? formatCompact(customConvs) : "—") },
+    { label: "CPL / CPA",      value: cplNative > 0 ? formatCurrencyCompact(cplNative) : (customCpa > 0 ? formatCurrencyCompact(customCpa) : "—") },
+    { label: "CTR",            value: ctr > 0 ? formatPercent(ctr) : "—" },
+    { label: "Impresiones",    value: formatCompact(impressions) },
+    { label: "Frecuencia",     value: frequency > 0 ? frequency.toFixed(2) : "—" },
+    { label: "Clics totales",  value: formatCompact(clicks) },
+    { label: "CPC",            value: cpc > 0 ? formatCurrencyCompact(cpc) : "—" },
+  ], [spend, leadsNative, cplNative, ctr, impressions, frequency, clicks, cpc, customConvs, customCpa]);
+
+  function toggle(id: string) {
+    setSelected(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
   }
+
+  function toggleAll() {
+    if (selected.size === SLIDE_OPTIONS.length) setSelected(new Set());
+    else setSelected(new Set(SLIDE_OPTIONS.map(o => o.id)));
+  }
+
+  const period  = `${fmtDate(dateRange.since)} → ${fmtDate(dateRange.until)}`;
+  const account = accountName ?? "Cuenta";
 
   async function handleExport() {
     if (selected.size === 0) return;
     setGenerating(true);
     setError("");
+    setDone(false);
     try {
-      const pptxgenjs = await import("pptxgenjs");
-      const PptxGenJS = pptxgenjs.default;
+      const mod = await import("pptxgenjs");
+      const PptxGenJS = mod.default;
       const prs = new PptxGenJS();
-      prs.layout = "LAYOUT_WIDE"; // 13.33" x 7.5"
+      prs.layout = "LAYOUT_WIDE";
 
-      const period = `${fmtDate(dateRange.since)} → ${fmtDate(dateRange.until)}`;
-      const account = accountName ?? "Cuenta";
-
-      // ── Cover slide ─────────────────────────────────────────────────────
+      // ── Cover ──────────────────────────────────────────────────────────
       if (selected.has("cover")) {
         const sl = prs.addSlide();
         sl.background = { color: DARK_BG };
-        // Blue accent bar at top
         sl.addShape(prs.ShapeType.rect, { x: 0, y: 0, w: "100%", h: 0.08, fill: { color: BLUE } });
-        // Main title
-        sl.addText("Seguimiento de Campañas", {
-          x: 0.8, y: 2.0, w: 11.73, h: 1.2,
-          fontSize: 40, bold: true, color: TEXT_W, align: "left",
-        });
-        // Account name
-        sl.addText(account, {
-          x: 0.8, y: 3.3, w: 11.73, h: 0.6,
-          fontSize: 22, bold: false, color: BLUE, align: "left",
-        });
-        // Period
-        sl.addText(period, {
-          x: 0.8, y: 4.1, w: 11.73, h: 0.5,
-          fontSize: 16, color: GRAY, align: "left",
-        });
-        // Bottom bar
+        sl.addText("Seguimiento de Campañas", { x: 0.8, y: 2.0, w: 11.73, h: 1.2, fontSize: 40, bold: true, color: TEXT_W });
+        sl.addText(account,  { x: 0.8, y: 3.3, w: 11.73, h: 0.6, fontSize: 22, color: BLUE });
+        sl.addText(period,   { x: 0.8, y: 4.0, w: 11.73, h: 0.5, fontSize: 16, color: GRAY });
         sl.addShape(prs.ShapeType.rect, { x: 0, y: 7.3, w: "100%", h: 0.08, fill: { color: BLUE } });
       }
 
-      // ── KPIs slide ──────────────────────────────────────────────────────
+      // ── KPIs ───────────────────────────────────────────────────────────
       if (selected.has("kpis")) {
-        const COLS = 3;
-        const BOX_W = 3.8;
-        const BOX_H = 1.4;
-        const GAP_X = 0.4;
-        const GAP_Y = 0.35;
-        const START_X = 0.5;
-        const START_Y = 1.3;
-
-        const chunks: KPIDef[][] = [];
-        for (let i = 0; i < kpiDefs.length; i += 6) chunks.push(kpiDefs.slice(i, i + 6));
-        if (chunks.length === 0) chunks.push([]);
+        const COLS = 4; const BOX_W = 2.9; const BOX_H = 1.5;
+        const GAP_X = 0.3; const GAP_Y = 0.3;
+        const START_X = 0.45; const START_Y = 1.3;
+        const chunks: typeof kpiRows[] = [];
+        for (let i = 0; i < kpiRows.length; i += 8) chunks.push(kpiRows.slice(i, i + 8));
 
         for (const chunk of chunks) {
           const sl = prs.addSlide();
           sl.background = { color: DARK_BG };
           sl.addShape(prs.ShapeType.rect, { x: 0, y: 0, w: "100%", h: 0.08, fill: { color: BLUE } });
-          sl.addText("Métricas del período", {
-            x: 0.5, y: 0.25, w: 12, h: 0.6,
-            fontSize: 20, bold: true, color: TEXT_W,
-          });
-          sl.addText(period, {
-            x: 0.5, y: 0.85, w: 12, h: 0.35,
-            fontSize: 11, color: GRAY,
-          });
+          sl.addText("Métricas del período", { x: 0.5, y: 0.2, w: 12, h: 0.6, fontSize: 20, bold: true, color: TEXT_W });
+          sl.addText(`${account}  ·  ${period}`, { x: 0.5, y: 0.82, w: 12, h: 0.3, fontSize: 11, color: GRAY });
 
           chunk.forEach((kpi, i) => {
-            const col = i % COLS;
-            const row = Math.floor(i / COLS);
+            const col = i % COLS; const row = Math.floor(i / COLS);
             const x = START_X + col * (BOX_W + GAP_X);
             const y = START_Y + row * (BOX_H + GAP_Y);
-
-            // Card background
-            sl.addShape(prs.ShapeType.rect, {
-              x, y, w: BOX_W, h: BOX_H,
-              fill: { color: CARD_BG },
-              line: { color: BLUE, width: 1 },
-            });
-            // Label
-            sl.addText(kpi.label, {
-              x: x + 0.15, y: y + 0.15, w: BOX_W - 0.3, h: 0.3,
-              fontSize: 10, color: GRAY,
-            });
-            // Value
-            sl.addText(kpi.value, {
-              x: x + 0.15, y: y + 0.45, w: BOX_W - 0.3, h: 0.55,
-              fontSize: 22, bold: true, color: TEXT_W,
-            });
-            // Delta
-            if (kpi.delta != null) {
-              const sign = kpi.delta > 0 ? "+" : "";
-              const isGood = kpi.higherIsBetter ? kpi.delta >= 0 : kpi.delta <= 0;
-              sl.addText(`${sign}${kpi.delta.toFixed(1)}%`, {
-                x: x + 0.15, y: y + 1.0, w: BOX_W - 0.3, h: 0.28,
-                fontSize: 9, color: isGood ? "34d399" : "f87171",
-              });
-            }
+            sl.addShape(prs.ShapeType.rect, { x, y, w: BOX_W, h: BOX_H, fill: { color: CARD_BG }, line: { color: BLUE, width: 1 } });
+            sl.addText(kpi.label, { x: x+0.15, y: y+0.15, w: BOX_W-0.3, h: 0.3, fontSize: 10, color: GRAY });
+            sl.addText(kpi.value, { x: x+0.15, y: y+0.5,  w: BOX_W-0.3, h: 0.7, fontSize: 24, bold: true, color: TEXT_W });
           });
         }
       }
 
-      // ── Helper: add a bar chart slide ────────────────────────────────────
-      function addChartSlide(
-        title: string,
-        dataFn: (rows: SeguimientoRow[]) => number,
-        color: string
-      ) {
+      // ── Chart helper ───────────────────────────────────────────────────
+      function addChartSlide(title: string, fn: (rows: SeguimientoRow[]) => number, color: string) {
         const sl = prs.addSlide();
         sl.background = { color: DARK_BG };
         sl.addShape(prs.ShapeType.rect, { x: 0, y: 0, w: "100%", h: 0.08, fill: { color: BLUE } });
-        sl.addText(title, {
-          x: 0.5, y: 0.2, w: 12, h: 0.6,
-          fontSize: 20, bold: true, color: TEXT_W,
-        });
-        sl.addText(period, {
-          x: 0.5, y: 0.85, w: 12, h: 0.3,
-          fontSize: 11, color: GRAY,
-        });
-
-        const { labels, values } = buildDailyData(timeSeries, dataFn);
+        sl.addText(title,  { x: 0.5, y: 0.2, w: 12, h: 0.6, fontSize: 20, bold: true, color: TEXT_W });
+        sl.addText(`${account}  ·  ${period}`, { x: 0.5, y: 0.82, w: 12, h: 0.3, fontSize: 11, color: GRAY });
+        const { labels, values } = buildDailyData(ts, fn);
         if (labels.length === 0) {
-          sl.addText("Sin datos disponibles para este período.", {
-            x: 0.5, y: 3.5, w: 12, h: 0.5,
-            fontSize: 14, color: GRAY, align: "center",
-          });
+          sl.addText("Sin datos para este período.", { x: 0.5, y: 3.5, w: 12, h: 0.5, fontSize: 14, color: GRAY, align: "center" });
           return;
         }
-
-        const chartData = [{ name: title, labels, values }];
-        sl.addChart(prs.ChartType.bar, chartData, {
+        sl.addChart(prs.ChartType.bar, [{ name: title, labels, values }], {
           x: 0.5, y: 1.3, w: 12.3, h: 5.5,
           chartColors: [color],
-          showLegend: false,
-          showValue: false,
-          catAxisLabelColor: GRAY,
-          valAxisLabelColor: GRAY,
-          dataLabelColor: TEXT_W,
+          showLegend: false, showValue: false,
+          catAxisLabelColor: GRAY, valAxisLabelColor: GRAY,
         });
       }
 
-      // ── Chart slides ─────────────────────────────────────────────────────
-      if (selected.has("cost_chart")) {
-        addChartSlide("Costo / Conv. en el tiempo", aggCplFn, GREEN);
-      }
-      if (selected.has("conv_chart")) {
-        addChartSlide("Conversiones en el tiempo", aggLeadsFn, BLUE);
-      }
-      if (selected.has("spend_chart")) {
-        addChartSlide("Gasto en el tiempo", (rows) => aggSpend(rows), PURPLE);
-      }
+      if (selected.has("cost_chart"))  addChartSlide("Costo / Conv. en el tiempo", r => aggCPL(r) || (aggSpend(r) > 0 && aggCustomConversions(r) > 0 ? aggSpend(r)/aggCustomConversions(r) : 0), GREEN);
+      if (selected.has("conv_chart"))  addChartSlide("Conversiones en el tiempo",  r => { const l = aggLeads(r); return l > 0 ? l : aggCustomConversions(r); }, BLUE);
+      if (selected.has("spend_chart")) addChartSlide("Gasto en el tiempo",          aggSpend, PURPLE);
 
-      // ── Campaign table slide ─────────────────────────────────────────────
+      // ── Campaign table ─────────────────────────────────────────────────
       if (selected.has("campaign_table")) {
         const sl = prs.addSlide();
         sl.background = { color: DARK_BG };
         sl.addShape(prs.ShapeType.rect, { x: 0, y: 0, w: "100%", h: 0.08, fill: { color: BLUE } });
-        sl.addText("Tabla de campañas", {
-          x: 0.5, y: 0.2, w: 12, h: 0.6,
-          fontSize: 20, bold: true, color: TEXT_W,
-        });
-        sl.addText(period, {
-          x: 0.5, y: 0.85, w: 12, h: 0.3,
-          fontSize: 11, color: GRAY,
-        });
+        sl.addText("Tabla de campañas", { x: 0.5, y: 0.2, w: 12, h: 0.6, fontSize: 20, bold: true, color: TEXT_W });
+        sl.addText(`${account}  ·  ${period}`, { x: 0.5, y: 0.82, w: 12, h: 0.3, fontSize: 11, color: GRAY });
 
-        // Deduplicate campaigns by id, take up to 15
-        const seen = new Set<string>();
-        const uniq: SeguimientoRow[] = [];
-        for (const r of campaignRows) {
-          if (!seen.has(r.campaignId)) { seen.add(r.campaignId); uniq.push(r); }
-          if (uniq.length >= 15) break;
-        }
+        const seen = new Set<string>(); const uniq: SeguimientoRow[] = [];
+        for (const r of c) { if (!seen.has(r.campaignId)) { seen.add(r.campaignId); uniq.push(r); } if (uniq.length >= 15) break; }
 
-        if (uniq.length === 0) {
-          sl.addText("Sin campañas disponibles.", {
-            x: 0.5, y: 3.5, w: 12, h: 0.5,
-            fontSize: 14, color: GRAY, align: "center",
-          });
-        } else {
-          const headerFill  = { type: "solid" as const, color: BLUE };
-          const rowFillDark = { type: "solid" as const, color: CARD_BG };
-          const rowFillLight= { type: "solid" as const, color: "1e2d42" };
-          const hText = { bold: true, color: TEXT_W, fontSize: 9 };
-          const cText = { color: TEXT_W, fontSize: 8 };
-
+        if (uniq.length > 0) {
+          const hF = { type: "solid" as const, color: BLUE };
+          const rF = (i: number) => ({ type: "solid" as const, color: i % 2 === 0 ? CARD_BG : "1e2d42" });
+          const hT = { bold: true, color: TEXT_W, fontSize: 9 };
+          const cT = { color: TEXT_W, fontSize: 8 };
           const rows = [
-            // Header
             [
-              { text: "Campaña",  options: { ...hText, fill: headerFill } },
-              { text: "Gasto",    options: { ...hText, fill: headerFill } },
-              { text: "Leads/Conv", options: { ...hText, fill: headerFill } },
-              { text: "CPL/CPA",  options: { ...hText, fill: headerFill } },
-              { text: "CTR",      options: { ...hText, fill: headerFill } },
+              { text: "Campaña",    options: { ...hT, fill: hF } },
+              { text: "Gasto",      options: { ...hT, fill: hF } },
+              { text: "Leads/Conv", options: { ...hT, fill: hF } },
+              { text: "CPL/CPA",   options: { ...hT, fill: hF } },
+              { text: "CTR",       options: { ...hT, fill: hF } },
             ],
-            // Data rows
             ...uniq.map((r, i) => {
               const s = r.spend ?? 0;
               const l = r.leads > 0 ? r.leads : r.customConversions;
               const cpl = l > 0 ? s / l : 0;
               const ctr = r.impressions > 0 ? (r.clicks / r.impressions) * 100 : 0;
-              const fill = i % 2 === 0 ? rowFillDark : rowFillLight;
+              const fill = rF(i);
               return [
-                { text: r.campaignName ?? r.campaignId, options: { ...cText, fill } },
-                { text: `$${s.toFixed(0)}`,             options: { ...cText, fill } },
-                { text: String(l),                       options: { ...cText, fill } },
-                { text: cpl > 0 ? `$${cpl.toFixed(0)}` : "—", options: { ...cText, fill } },
-                { text: ctr > 0 ? `${ctr.toFixed(1)}%` : "—", options: { ...cText, fill } },
+                { text: r.campaignName ?? r.campaignId,       options: { ...cT, fill } },
+                { text: `$${s.toFixed(0)}`,                    options: { ...cT, fill } },
+                { text: String(l),                             options: { ...cT, fill } },
+                { text: cpl > 0 ? `$${cpl.toFixed(0)}` : "—", options: { ...cT, fill } },
+                { text: ctr > 0 ? `${ctr.toFixed(1)}%` : "—", options: { ...cT, fill } },
               ];
             }),
           ];
-
-          sl.addTable(rows, {
-            x: 0.5, y: 1.3, w: 12.3,
-            colW: [5.0, 1.6, 1.9, 1.9, 1.9],
-            border: { pt: 0.5, color: "334155" },
-          });
+          sl.addTable(rows, { x: 0.5, y: 1.3, w: 12.3, colW: [5.0, 1.6, 1.9, 1.9, 1.9], border: { pt: 0.5, color: "334155" } });
         }
       }
 
-      // ── Save file ────────────────────────────────────────────────────────
       const fileName = `TBREIN_${account.replace(/\s+/g, "_")}_${dateRange.since}_${dateRange.until}.pptx`;
       await prs.writeFile({ fileName });
-
-      setOpen(false);
+      setDone(true);
     } catch (e) {
       console.error(e);
       setError(e instanceof Error ? e.message : "Error al generar la presentación");
@@ -332,139 +257,120 @@ export function PresentationExport({
   }
 
   return (
-    <>
-      {/* Trigger button */}
-      <button
-        onClick={() => setOpen(true)}
-        className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold border transition-all bg-blue-500/10 border-blue-500/30 text-blue-400 hover:bg-blue-500/20"
+    <div className="flex flex-col gap-6">
+
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onClose}
+          className="flex items-center gap-1.5 text-xs hover:underline"
+          style={{ color: "var(--muted-foreground)" }}
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Volver
+        </button>
+        <div className="flex items-center gap-2">
+          <Presentation className="w-5 h-5 text-blue-400" />
+          <h3 className="text-base font-bold">Crear presentación</h3>
+        </div>
+      </div>
+
+      {/* Description */}
+      <div
+        className="rounded-xl border px-4 py-3 text-xs"
+        style={{ borderColor: "var(--border)", background: "var(--card)", color: "var(--muted-foreground)" }}
       >
-        <Presentation className="w-3.5 h-3.5" />
-        Exportar presentación
-      </button>
+        Seleccioná las diapositivas que querés incluir. Se exporta un archivo <strong>.pptx</strong> con diseño oscuro listo para presentar.
+        <span className="block mt-1 font-medium" style={{ color: "var(--foreground)" }}>
+          {account} · {period}
+        </span>
+      </div>
 
-      {/* Modal */}
-      <AnimatePresence>
-        {open && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              key="backdrop"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
-              onClick={() => !generating && setOpen(false)}
-            />
+      {/* Slide options */}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--muted-foreground)" }}>
+            Diapositivas
+          </p>
+          <button
+            onClick={toggleAll}
+            className="text-[10px] underline hover:no-underline"
+            style={{ color: "var(--muted-foreground)" }}
+          >
+            {selected.size === SLIDE_OPTIONS.length ? "Deseleccionar todo" : "Seleccionar todo"}
+          </button>
+        </div>
 
-            {/* Panel */}
-            <motion.div
-              key="panel"
-              initial={{ opacity: 0, y: 24, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 16, scale: 0.97 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
-            >
-              <div
-                className="pointer-events-auto w-full max-w-lg rounded-2xl border shadow-2xl flex flex-col"
-                style={{ background: "var(--card)", borderColor: "var(--border)" }}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {SLIDE_OPTIONS.map(opt => {
+            const checked = selected.has(opt.id);
+            return (
+              <button
+                key={opt.id}
+                onClick={() => toggle(opt.id)}
+                className={cn(
+                  "flex items-start gap-3 rounded-xl border p-3 text-left transition-all",
+                  checked
+                    ? "bg-blue-500/10 border-blue-500/30"
+                    : "hover:bg-accent/40"
+                )}
+                style={!checked ? { borderColor: "var(--border)" } : undefined}
               >
-                {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "var(--border)" }}>
-                  <div className="flex items-center gap-2">
-                    <Presentation className="w-4 h-4 text-blue-400" />
-                    <span className="font-semibold text-sm">Exportar presentación</span>
+                <span className={cn(
+                  "mt-0.5 w-4 h-4 rounded flex items-center justify-center shrink-0 border transition-colors",
+                  checked ? "bg-blue-500 border-blue-500" : "border-outline-variant"
+                )}>
+                  {checked && <Check className="w-2.5 h-2.5 text-white" />}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm">{opt.icon}</span>
+                    <span className={cn("text-xs font-semibold", checked ? "text-blue-400" : "")}
+                      style={!checked ? { color: "var(--foreground)" } : undefined}>
+                      {opt.label}
+                    </span>
                   </div>
-                  <button
-                    onClick={() => !generating && setOpen(false)}
-                    className="p-1 rounded-lg hover:bg-accent/60 transition"
-                    disabled={generating}
-                  >
-                    <X className="w-4 h-4" style={{ color: "var(--muted-foreground)" }} />
-                  </button>
-                </div>
-
-                {/* Body */}
-                <div className="flex flex-col gap-3 px-6 py-5 overflow-y-auto max-h-[60vh]">
-                  <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
-                    Seleccioná las diapositivas que querés incluir en el archivo .pptx
+                  <p className="text-[10px] mt-0.5" style={{ color: "var(--muted-foreground)" }}>
+                    {opt.description}
                   </p>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {SLIDE_OPTIONS.map((opt) => {
-                      const checked = selected.has(opt.id);
-                      return (
-                        <button
-                          key={opt.id}
-                          onClick={() => toggleOption(opt.id)}
-                          className={cn(
-                            "flex items-start gap-3 rounded-xl border p-3 text-left transition-all",
-                            checked
-                              ? "bg-blue-500/10 border-blue-500/30"
-                              : "hover:bg-accent/40"
-                          )}
-                          style={!checked ? { borderColor: "var(--border)" } : undefined}
-                        >
-                          {/* Checkbox */}
-                          <span
-                            className={cn(
-                              "mt-0.5 w-4 h-4 rounded flex items-center justify-center shrink-0 border transition-colors",
-                              checked ? "bg-blue-500 border-blue-500" : "border-outline-variant"
-                            )}
-                          >
-                            {checked && <Check className="w-2.5 h-2.5 text-white" />}
-                          </span>
-
-                          {/* Icon + text */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-sm leading-none">{opt.icon}</span>
-                              <span className={cn("text-xs font-semibold", checked ? "text-blue-400" : "")}
-                                style={!checked ? { color: "var(--foreground)" } : undefined}>
-                                {opt.label}
-                              </span>
-                            </div>
-                            <p className="text-[10px] mt-0.5 leading-tight" style={{ color: "var(--muted-foreground)" }}>
-                              {opt.description}
-                            </p>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {error && (
-                    <p className="text-xs text-red-400 text-center">{error}</p>
-                  )}
                 </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-                {/* Footer */}
-                <div className="flex items-center justify-end gap-2 px-6 py-4 border-t" style={{ borderColor: "var(--border)" }}>
-                  <button
-                    onClick={() => !generating && setOpen(false)}
-                    disabled={generating}
-                    className="px-4 py-2 rounded-xl text-xs font-medium border hover:bg-accent/60 transition disabled:opacity-50"
-                    style={{ borderColor: "var(--border)", color: "var(--muted-foreground)" }}
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={handleExport}
-                    disabled={generating || selected.size === 0}
-                    className="flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-semibold bg-blue-500 text-white hover:bg-blue-600 transition disabled:opacity-50"
-                  >
-                    {generating ? (
-                      <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generando…</>
-                    ) : (
-                      <><Presentation className="w-3.5 h-3.5" /> Exportar .pptx</>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-    </>
+      {/* Error */}
+      {error && <p className="text-xs text-red-400">{error}</p>}
+
+      {/* Done message */}
+      {done && !generating && (
+        <p className="text-xs text-green-400 flex items-center gap-1.5">
+          <Check className="w-3.5 h-3.5" /> Presentación descargada correctamente
+        </p>
+      )}
+
+      {/* Export button */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={handleExport}
+          disabled={generating || selected.size === 0}
+          className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold bg-blue-500 text-white hover:bg-blue-600 transition disabled:opacity-50"
+        >
+          {generating ? (
+            <><Loader2 className="w-4 h-4 animate-spin" /> Generando…</>
+          ) : (
+            <><Presentation className="w-4 h-4" /> Exportar .pptx ({selected.size} slides)</>
+          )}
+        </button>
+        <button
+          onClick={onClose}
+          className="text-xs hover:underline"
+          style={{ color: "var(--muted-foreground)" }}
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
   );
 }

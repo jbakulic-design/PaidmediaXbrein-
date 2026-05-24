@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useImperativeHandle, forwardRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Loader2, Users, Zap } from "lucide-react";
 import type { MetaAdAccount } from "@/lib/metaApi";
@@ -13,14 +13,17 @@ import {
 import { cn } from "@/lib/utils";
 import { GlobalFilters } from "./GlobalFilters";
 import { LeadsPage } from "./pages/LeadsPage";
+import { PresentationExport } from "./PresentationExport";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type ActiveTab = "leads";
+type ActiveView = "leads" | "export";
 
-const TABS: { key: ActiveTab; label: string; icon: React.ReactNode }[] = [
-  { key: "leads", label: "Performance leads", icon: <Users className="w-3.5 h-3.5" /> },
-];
+// ─── Imperative handle (so parent can trigger export view) ───────────────────
+
+export interface TbreinDashboardHandle {
+  openExport: () => void;
+}
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -32,13 +35,14 @@ interface Props {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export function TbreinDashboard({ token, accounts, defaultAccountId }: Props) {
+export const TbreinDashboard = forwardRef<TbreinDashboardHandle, Props>(
+  function TbreinDashboard({ token, accounts, defaultAccountId }, ref) {
   // ── Filters state ───────────────────────────────────────────────────────
   const [accountId,      setAccountId]      = useState(defaultAccountId ?? "");
   const [preset,         setPreset]         = useState<SeguimientoPreset>("last_30d");
   const [range,          setRange]          = useState<DateRange>(() => presetToRange("last_30d"));
   const [compareEnabled, setCompareEnabled] = useState(true);
-  const [activeTab,      setActiveTab]      = useState<ActiveTab>("leads");
+  const [activeView,     setActiveView]     = useState<ActiveView>("leads");
 
   // ── Data state ─────────────────────────────────────────────────────────
   const [data,     setData]     = useState<SeguimientoPayload | null>(null);
@@ -48,6 +52,11 @@ export function TbreinDashboard({ token, accounts, defaultAccountId }: Props) {
 
   // Prevent duplicate fetches for the same parameters
   const fetchKeyRef = useRef("");
+
+  // ── Expose openExport to parent ────────────────────────────────────────
+  useImperativeHandle(ref, () => ({
+    openExport: () => setActiveView("export"),
+  }));
 
   // ── Fetch logic ────────────────────────────────────────────────────────
   const doFetch = useCallback(
@@ -116,23 +125,27 @@ export function TbreinDashboard({ token, accounts, defaultAccountId }: Props) {
     );
   }
 
+  // Account name for export
+  const accountName = accounts.find(a => a.id === accountId)?.name ?? accountId;
+
   return (
     <div className="flex flex-col gap-5">
 
       {/* ── Section heading ──────────────────────────────────────────────── */}
-      <div>
-        <h2 className="text-lg font-bold">TBREIN — Seguimiento de clientes</h2>
-        <p className="text-xs mt-0.5" style={{ color: "var(--muted-foreground)" }}>
-          Métricas de performance por tipo de campaña · Meta Ads API
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-lg font-bold">TBREIN — Seguimiento de clientes</h2>
+          <p className="text-xs mt-0.5" style={{ color: "var(--muted-foreground)" }}>
+            Métricas de performance por tipo de campaña · Meta Ads API
+          </p>
+        </div>
       </div>
 
-      {/* ── Sticky filter + tab bar ──────────────────────────────────────── */}
+      {/* ── Sticky filter bar ────────────────────────────────────────────── */}
       <div
         className="sticky top-16 z-30 flex flex-col gap-3 -mx-4 md:-mx-8 px-4 md:px-8 py-3"
         style={{ background: "var(--background)", borderBottom: "1px solid var(--border)" }}
       >
-        {/* Global filters */}
         <GlobalFilters
           accounts={accounts}
           accountId={accountId}
@@ -146,28 +159,25 @@ export function TbreinDashboard({ token, accounts, defaultAccountId }: Props) {
           loading={loading}
         />
 
-        {/* Tab navigation */}
+        {/* View tabs */}
         <div className="flex items-center gap-1 overflow-x-auto">
-          {TABS.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={cn(
-                "flex items-center gap-1.5 px-4 py-2 text-xs font-semibold whitespace-nowrap rounded-lg border transition-all",
-                activeTab === tab.key
-                  ? "bg-blue-500/15 text-blue-400 border-blue-500/30"
-                  : "border-transparent hover:bg-accent/60"
-              )}
-              style={activeTab !== tab.key ? { color: "var(--muted-foreground)" } : undefined}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
+          <button
+            onClick={() => setActiveView("leads")}
+            className={cn(
+              "flex items-center gap-1.5 px-4 py-2 text-xs font-semibold whitespace-nowrap rounded-lg border transition-all",
+              activeView === "leads"
+                ? "bg-blue-500/15 text-blue-400 border-blue-500/30"
+                : "border-transparent hover:bg-accent/60"
+            )}
+            style={activeView !== "leads" ? { color: "var(--muted-foreground)" } : undefined}
+          >
+            <Users className="w-3.5 h-3.5" />
+            Performance leads
+          </button>
         </div>
       </div>
 
-      {/* ── Loading skeleton ─────────────────────────────────────────────── */}
+      {/* ── Loading ──────────────────────────────────────────────────────── */}
       {loading && !data && (
         <div className="flex flex-col items-center gap-3 py-16">
           <Loader2 className="w-7 h-7 animate-spin text-blue-400" />
@@ -186,10 +196,7 @@ export function TbreinDashboard({ token, accounts, defaultAccountId }: Props) {
           <Zap className="w-4 h-4 shrink-0" />
           <span>{error}</span>
           <button
-            onClick={() => {
-              fetchKeyRef.current = "";
-              doFetch(token, accountId, range, compareEnabled);
-            }}
+            onClick={() => { fetchKeyRef.current = ""; doFetch(token, accountId, range, compareEnabled); }}
             className="ml-auto text-xs underline hover:no-underline"
           >
             Reintentar
@@ -211,10 +218,9 @@ export function TbreinDashboard({ token, accounts, defaultAccountId }: Props) {
       )}
 
       {/* ── Content ──────────────────────────────────────────────────────── */}
-      {data && !(!accountId && !loading) && (
+      {data && accountId && (
         <div className={cn("flex flex-col gap-5 transition-opacity", loading && "opacity-60 pointer-events-none")}>
 
-          {/* Refresh indicator */}
           {loading && data && (
             <div className="flex items-center gap-1.5 text-xs" style={{ color: "var(--muted-foreground)" }}>
               <Loader2 className="w-3 h-3 animate-spin" />
@@ -223,14 +229,14 @@ export function TbreinDashboard({ token, accounts, defaultAccountId }: Props) {
           )}
 
           <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
-            >
-              {activeTab === "leads" && (
+            {activeView === "leads" && (
+              <motion.div
+                key="leads"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+              >
                 <LeadsPage
                   data={data}
                   prevData={compareEnabled ? prevData : null}
@@ -238,12 +244,29 @@ export function TbreinDashboard({ token, accounts, defaultAccountId }: Props) {
                   accountId={accountId}
                   dateRange={{ since: range.since, until: range.until }}
                 />
-              )}
-            </motion.div>
+              </motion.div>
+            )}
+
+            {activeView === "export" && (
+              <motion.div
+                key="export"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+              >
+                <PresentationExport
+                  data={data}
+                  accountName={accountName}
+                  dateRange={{ since: range.since, until: range.until }}
+                  onClose={() => setActiveView("leads")}
+                />
+              </motion.div>
+            )}
           </AnimatePresence>
         </div>
       )}
 
     </div>
   );
-}
+});

@@ -16,7 +16,6 @@ import { MetricPickerPanel, type MetricOption } from "../scorecards/MetricPicker
 import { MetricTimeline } from "../charts/MetricTimeline";
 import { SeguimientoTable } from "../tables/CampaignTable";
 import { ActionTypesDebug } from "../debug/ActionTypesDebug";
-import { PresentationExport } from "../PresentationExport";
 import { formatCurrencyCompact, formatCompact, formatPercent } from "@/lib/utils";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -339,24 +338,6 @@ export function LeadsPage({ data, prevData, compareEnabled, accountId, dateRange
           <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
           Las campañas no tienen objetivo clasificado — se muestran todas.
           Para filtrado preciso, verificá los objetivos en Ads Manager.
-        </div>
-      )}
-
-      {/* ── PPT Export ──────────────────────────────────────────────────── */}
-      {dateRange && (
-        <div className="flex justify-end">
-          <PresentationExport
-            kpiDefs={kpiDefs}
-            timeSeries={ts}
-            campaignRows={c}
-            accountName={accountId}
-            dateRange={dateRange}
-            aggLeadsFn={aggLeadsFn}
-            aggCplFn={aggCplFn}
-            spend={spend}
-            leadsTotal={leadsNative}
-            cplTotal={cplNative}
-          />
         </div>
       )}
 

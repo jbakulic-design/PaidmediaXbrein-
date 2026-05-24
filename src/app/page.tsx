@@ -24,7 +24,7 @@ import { ComparePanel } from "@/components/ComparePanel";
 import { BudgetProjection } from "@/components/BudgetProjection";
 import { SpendChart } from "@/components/SpendChart";
 import { Sidebar, type CampaignType, type MainTab, type AnalysisTab, CAMPAIGN_TYPE_CONFIG } from "@/components/Sidebar";
-import { TbreinDashboard } from "@/components/tbrein/TbreinDashboard";
+import { TbreinDashboard, type TbreinDashboardHandle } from "@/components/tbrein/TbreinDashboard";
 import { SettingsPage } from "@/components/tbrein/pages/SettingsPage";
 import { TeamPage } from "@/components/tbrein/pages/TeamPage";
 import { DocsPage } from "@/components/tbrein/pages/DocsPage";
@@ -84,6 +84,9 @@ export default function Dashboard() {
   const [earlyToken, setEarlyToken] = useState<string | null>(null);
   const [earlyAccounts, setEarlyAccounts] = useState<MetaAdAccount[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState("");
+
+  // Ref to TbreinDashboard (for imperative openExport)
+  const tbreinRef = useRef<TbreinDashboardHandle>(null);
 
   // Evita re-fetch del mismo key y rastrea si se cargó al menos una vez
   const lastFetchedKeyRef = useRef("");
@@ -261,6 +264,8 @@ export default function Dashboard() {
         campaignType={campaignType}
         onCampaignType={setCampaignType}
         onLogout={logout}
+        onCreatePresentation={() => { setMainTab("seguimiento"); tbreinRef.current?.openExport(); }}
+        hasTbreinData={mainTab === "seguimiento"}
         metaQuick={earlyToken && mainTab !== "seguimiento" ? {
           accountName: earlyAccounts.find((a) => a.id === selectedAccountId)?.name ?? metaConnection?.accountName ?? "",
           accountId: selectedAccountId,
@@ -522,6 +527,7 @@ export default function Dashboard() {
           {/* ── SEGUIMIENTO TBREIN ── */}
           {mainTab === "seguimiento" && (
             <TbreinDashboard
+              ref={tbreinRef}
               token={earlyToken ?? ""}
               accounts={earlyAccounts}
               defaultAccountId={selectedAccountId || undefined}

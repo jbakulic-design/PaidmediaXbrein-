@@ -3,7 +3,7 @@
 import {
   Menu, X, ChevronDown,
   Loader2, Search, RefreshCw, Zap,
-  ShoppingCart, Users, MessageCircle,
+  ShoppingCart, Users, MessageCircle, Presentation,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
@@ -245,17 +245,19 @@ function MetaQuickPanel({ s }: { s: MetaQuickSettings }) {
 // ── SidebarProps ──────────────────────────────────────────────────────────────
 
 interface SidebarProps {
-  mainTab:          MainTab;
-  analysisTab:      AnalysisTab;
-  onMainTab:        (tab: MainTab) => void;
-  onAnalysisTab:    (tab: AnalysisTab) => void;
-  hasData:          boolean;
-  hasMetaConnection:boolean;
-  reportsCount:     number;
-  campaignType:     CampaignType;
-  onCampaignType:   (t: CampaignType) => void;
-  metaQuick?:       MetaQuickSettings;
-  onLogout:         () => void;
+  mainTab:               MainTab;
+  analysisTab:           AnalysisTab;
+  onMainTab:             (tab: MainTab) => void;
+  onAnalysisTab:         (tab: AnalysisTab) => void;
+  hasData:               boolean;
+  hasMetaConnection:     boolean;
+  reportsCount:          number;
+  campaignType:          CampaignType;
+  onCampaignType:        (t: CampaignType) => void;
+  metaQuick?:            MetaQuickSettings;
+  onLogout:              () => void;
+  onCreatePresentation?: () => void;
+  hasTbreinData?:        boolean;
 }
 
 // ── NavContent ────────────────────────────────────────────────────────────────
@@ -265,6 +267,7 @@ function NavContent(props: SidebarProps & { onClose?: () => void }) {
     mainTab, analysisTab, onMainTab, onAnalysisTab,
     hasData, hasMetaConnection, reportsCount,
     metaQuick, onLogout, onClose,
+    onCreatePresentation, hasTbreinData,
   } = props;
 
   return (
@@ -347,6 +350,25 @@ function NavContent(props: SidebarProps & { onClose?: () => void }) {
           badge="TBREIN"
           badgeGreen
         />
+
+        {/* Seguimiento sub-items */}
+        {mainTab === "seguimiento" && (
+          <div className="ml-4 pl-2 border-l border-outline-variant flex flex-col gap-0.5 my-0.5">
+            <button
+              onClick={() => { onCreatePresentation?.(); onClose?.(); }}
+              disabled={!hasTbreinData}
+              className={cn(
+                "flex items-center gap-2 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                hasTbreinData
+                  ? "text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50"
+                  : "text-on-surface-variant opacity-40 cursor-not-allowed"
+              )}
+            >
+              <Presentation className="w-3.5 h-3.5 shrink-0" />
+              Crear presentación
+            </button>
+          </div>
+        )}
 
         <div className="my-2 border-t border-outline-variant" />
 
