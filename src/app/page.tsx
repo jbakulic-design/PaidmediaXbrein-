@@ -25,6 +25,9 @@ import { BudgetProjection } from "@/components/BudgetProjection";
 import { SpendChart } from "@/components/SpendChart";
 import { Sidebar, type CampaignType, type MainTab, type AnalysisTab, CAMPAIGN_TYPE_CONFIG } from "@/components/Sidebar";
 import { TbreinDashboard, type TbreinDashboardHandle } from "@/components/tbrein/TbreinDashboard";
+import { TbreinHeaderFilters } from "@/components/tbrein/TbreinHeaderFilters";
+import type { DateRange, SeguimientoPreset } from "@/lib/seguimientoApi";
+import { presetToRange } from "@/lib/seguimientoApi";
 import { SettingsPage } from "@/components/tbrein/pages/SettingsPage";
 import { TeamPage } from "@/components/tbrein/pages/TeamPage";
 import { DocsPage } from "@/components/tbrein/pages/DocsPage";
@@ -88,6 +91,16 @@ export default function Dashboard() {
   // Ref to TbreinDashboard (for imperative openExport)
   const tbreinRef = useRef<TbreinDashboardHandle>(null);
 
+  // ── TBREIN filters (lifted to header) ─────────────────────────────────
+  const [tbreinAccountId,      setTbreinAccountId]      = useState("");
+  const [tbreinPreset,         setTbreinPreset]         = useState<SeguimientoPreset>("last_30d");
+  const [tbreinRange,          setTbreinRange]          = useState<DateRange>(() => presetToRange("last_30d"));
+  const [tbreinCompareEnabled, setTbreinCompareEnabled] = useState(true);
+
+  function handleTbreinRange(r: DateRange, p: SeguimientoPreset) {
+    setTbreinRange(r); setTbreinPreset(p);
+  }
+
   // Evita re-fetch del mismo key y rastrea si se cargó al menos una vez
   const lastFetchedKeyRef = useRef("");
   const hasLoadedRef = useRef(false);
@@ -106,10 +119,12 @@ export default function Dashboard() {
         setEarlyAccounts(accounts);
         const saved = loadSelectedAccount();
         const exists = accounts.find((a) => a.id === saved);
-        setSelectedAccountId(exists ? saved : "");
+        const finalId = exists ? saved : "";
+        setSelectedAccountId(finalId);
+        if (!tbreinAccountId) setTbreinAccountId(finalId);
       })
       .catch(() => {}); // silencioso — error se maneja al intentar cargar campañas
-  }, [fbToken]);
+  }, [fbToken]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const {
     workspaces, activeWorkspace, createWorkspace,
@@ -285,21 +300,38 @@ export default function Dashboard() {
       <div className="flex-1 flex flex-col min-w-0">
 
         {/* TopNavBar */}
-        <header className="sticky top-0 z-40 w-full bg-surface/80 backdrop-blur-md border-b border-outline-variant flex justify-between items-center h-16 px-6 md:pl-6 pl-14">
-          <div className="flex items-center gap-6">
-            <span className="text-base font-black text-on-surface tracking-tight hidden sm:block">XBREIN</span>
-            <div className="hidden md:flex">
-              <ClientSwitcher
-                workspaces={workspaces}
-                active={activeWorkspace}
-                onCreate={createWorkspace}
-                onSwitch={switchWorkspace}
-                onRename={renameWorkspace}
-                onDelete={deleteWorkspace}
-              />
-            </div>
+        <header className="sticky top-0 z-40 w-full bg-surface/80 backdrop-blur-md border-b border-outline-variant flex justify-between items-center h-16 px-6 md:pl-6 pl-14 gap-4">
+          <div className="flex items-center gap-4 min-w-0 flex-1">
+            <span className="text-base font-black text-on-surface tracking-tight hidden sm:block shrink-0">XBREIN</span>
+            {mainTab !== "seguimiento" && (
+              <div className="hidden md:flex">
+                <ClientSwitcher
+                  workspaces={workspaces}
+                  active={activeWorkspace}
+                  onCreate={createWorkspace}
+                  onSwitch={switchWorkspace}
+                  onRename={renameWorkspace}
+                  onDelete={deleteWorkspace}
+                />
+              </div>
+            )}
+            {/* TBREIN filters in header — only when on Seguimiento */}
+            {mainTab === "seguimiento" && earlyToken && (
+              <div className="hidden md:flex min-w-0">
+                <TbreinHeaderFilters
+                  accounts={earlyAccounts}
+                  accountId={tbreinAccountId}
+                  onAccount={setTbreinAccountId}
+                  range={tbreinRange}
+                  preset={tbreinPreset}
+                  onRange={handleTbreinRange}
+                  compareEnabled={tbreinCompareEnabled}
+                  onCompareToggle={setTbreinCompareEnabled}
+                />
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0">
             <AlertsBell alerts={alerts} />
             {(syncing || metaLoading) && (
               <span className="flex items-center gap-1 text-xs text-on-surface-variant px-2">
@@ -530,7 +562,9 @@ export default function Dashboard() {
               ref={tbreinRef}
               token={earlyToken ?? ""}
               accounts={earlyAccounts}
-              defaultAccountId={selectedAccountId || undefined}
+              accountId={tbreinAccountId}
+              range={tbreinRange}
+              compareEnabled={tbreinCompareEnabled}
             />
           )}
 
