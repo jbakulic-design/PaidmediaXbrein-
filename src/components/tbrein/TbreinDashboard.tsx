@@ -27,6 +27,8 @@ interface Props {
   accountId:      string;
   range:          DateRange;
   compareEnabled: boolean;
+  view?:          "leads" | "export";
+  onViewChange?:  (v: "leads" | "export") => void;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -34,9 +36,14 @@ interface Props {
 type ActiveView = "leads" | "export";
 
 export const TbreinDashboard = forwardRef<TbreinDashboardHandle, Props>(
-  function TbreinDashboard({ token, accounts, accountId, range, compareEnabled }, ref) {
+  function TbreinDashboard({ token, accounts, accountId, range, compareEnabled, view, onViewChange }, ref) {
 
-  const [activeView, setActiveView] = useState<ActiveView>("leads");
+  const [internalView, setInternalView] = useState<ActiveView>("leads");
+  const activeView: ActiveView = view ?? internalView;
+  const setActiveView = (v: ActiveView) => {
+    if (onViewChange) onViewChange(v);
+    else setInternalView(v);
+  };
 
   // ── Data state ─────────────────────────────────────────────────────────
   const [data,     setData]     = useState<SeguimientoPayload | null>(null);

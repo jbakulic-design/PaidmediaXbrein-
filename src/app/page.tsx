@@ -46,7 +46,7 @@ import {
   MousePointerClick, ShoppingCart, Zap,
   Save, Loader2, Upload, RefreshCw,
   Table as TableIcon, LineChart as LineChartIcon, Repeat,
-  Wallet, Network, FileText,
+  Wallet, Network, FileText, Presentation,
 } from "lucide-react";
 import {
   formatCurrencyCompact, formatCompact,
@@ -71,6 +71,7 @@ export default function Dashboard() {
   const [targets] = useState<MetaTargets>(DEFAULT_TARGETS);
   const [mainTab, setMainTab] = useState<MainTab>("seguimiento");
   const [analysisTab, setAnalysisTab] = useState<AnalysisTab>("table");
+  const [tbreinView, setTbreinView] = useState<"leads" | "export">("leads");
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState("");
   const [githubConfig, setGithubConfig] = useState<GitHubConfig | null>(null);
@@ -281,8 +282,6 @@ export default function Dashboard() {
         campaignType={campaignType}
         onCampaignType={setCampaignType}
         onLogout={logout}
-        onCreatePresentation={() => { setMainTab("seguimiento"); tbreinRef.current?.openExport(); }}
-        hasTbreinData={mainTab === "seguimiento"}
         metaQuick={earlyToken && mainTab === "analysis" ? {
           accountName: earlyAccounts.find((a) => a.id === selectedAccountId)?.name ?? metaConnection?.accountName ?? "",
           accountId: selectedAccountId,
@@ -352,13 +351,14 @@ export default function Dashboard() {
           <div className="border-b border-outline-variant bg-surface/50 px-4 md:px-8">
             <div className="max-w-[1440px] mx-auto w-full flex items-center gap-1 overflow-x-auto">
               {([
-                { key: "leads",     label: "Performance leads", icon: <Users className="w-3.5 h-3.5" />,           active: mainTab === "seguimiento",                          onClick: () => setMainTab("seguimiento") },
+                { key: "leads",     label: "Seguimiento TBREIN", icon: <Users className="w-3.5 h-3.5" />,           active: mainTab === "seguimiento" && tbreinView === "leads", onClick: () => { setMainTab("seguimiento"); setTbreinView("leads"); } },
                 { key: "table",     label: "Tabla",             icon: <TableIcon className="w-3.5 h-3.5" />,        active: mainTab === "analysis" && analysisTab === "table",  onClick: () => { setMainTab("analysis"); setAnalysisTab("table"); } },
                 { key: "charts",    label: "Gráficos",          icon: <LineChartIcon className="w-3.5 h-3.5" />,    active: mainTab === "analysis" && analysisTab === "charts", onClick: () => { setMainTab("analysis"); setAnalysisTab("charts"); } },
                 { key: "compare",   label: "Comparar",          icon: <Repeat className="w-3.5 h-3.5" />,           active: mainTab === "analysis" && analysisTab === "compare",onClick: () => { setMainTab("analysis"); setAnalysisTab("compare"); } },
                 { key: "budget",    label: "Presupuesto",       icon: <Wallet className="w-3.5 h-3.5" />,           active: mainTab === "analysis" && analysisTab === "budget", onClick: () => { setMainTab("analysis"); setAnalysisTab("budget"); } },
                 { key: "structure", label: "Estructura",        icon: <Network className="w-3.5 h-3.5" />,          active: mainTab === "analysis" && analysisTab === "structure", onClick: () => { setMainTab("analysis"); setAnalysisTab("structure"); } },
                 { key: "reports",   label: "Reportes",          icon: <FileText className="w-3.5 h-3.5" />,         active: mainTab === "reports",                              onClick: () => setMainTab("reports") },
+                { key: "export",    label: "Crear presentación",icon: <Presentation className="w-3.5 h-3.5" />,    active: mainTab === "seguimiento" && tbreinView === "export", onClick: () => { setMainTab("seguimiento"); setTbreinView("export"); tbreinRef.current?.openExport(); } },
               ]).map((t) => (
                 <button
                   key={t.key}
@@ -603,6 +603,8 @@ export default function Dashboard() {
               accountId={tbreinAccountId}
               range={tbreinRange}
               compareEnabled={tbreinCompareEnabled}
+              view={tbreinView}
+              onViewChange={setTbreinView}
             />
           )}
 
