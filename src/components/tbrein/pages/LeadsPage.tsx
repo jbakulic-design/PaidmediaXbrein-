@@ -16,6 +16,7 @@ import { MetricPickerPanel, type MetricOption } from "../scorecards/MetricPicker
 import { MetricTimeline } from "../charts/MetricTimeline";
 import { SeguimientoTable } from "../tables/CampaignTable";
 import { ActionTypesDebug } from "../debug/ActionTypesDebug";
+import { PresentationExport } from "../PresentationExport";
 import { formatCurrencyCompact, formatCompact, formatPercent } from "@/lib/utils";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -25,6 +26,7 @@ interface Props {
   prevData?:      SeguimientoPayload | null;
   compareEnabled: boolean;
   accountId?:     string;
+  dateRange?:     { since: string; until: string };
 }
 
 // ─── Filtering helpers ────────────────────────────────────────────────────────
@@ -85,7 +87,7 @@ function shortActionLabel(type: string): string {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export function LeadsPage({ data, prevData, compareEnabled, accountId }: Props) {
+export function LeadsPage({ data, prevData, compareEnabled, accountId, dateRange }: Props) {
 
   // ── Tracking override (for chart/table aggregation) ────────────────────
   // We no longer use TrackingPicker — the MetricPicker replaces it.
@@ -337,6 +339,24 @@ export function LeadsPage({ data, prevData, compareEnabled, accountId }: Props) 
           <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
           Las campañas no tienen objetivo clasificado — se muestran todas.
           Para filtrado preciso, verificá los objetivos en Ads Manager.
+        </div>
+      )}
+
+      {/* ── PPT Export ──────────────────────────────────────────────────── */}
+      {dateRange && (
+        <div className="flex justify-end">
+          <PresentationExport
+            kpiDefs={kpiDefs}
+            timeSeries={ts}
+            campaignRows={c}
+            accountName={accountId}
+            dateRange={dateRange}
+            aggLeadsFn={aggLeadsFn}
+            aggCplFn={aggCplFn}
+            spend={spend}
+            leadsTotal={leadsNative}
+            cplTotal={cplNative}
+          />
         </div>
       )}
 
