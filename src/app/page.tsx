@@ -45,6 +45,8 @@ import {
   DollarSign, TrendingUp, Users,
   MousePointerClick, ShoppingCart, Zap,
   Save, Loader2, Upload, RefreshCw,
+  Table as TableIcon, LineChart as LineChartIcon, Repeat,
+  Wallet, Network, FileText,
 } from "lucide-react";
 import {
   formatCurrencyCompact, formatCompact,
@@ -67,7 +69,7 @@ export default function Dashboard() {
   const [campaigns, setCampaigns] = useState<MetaCampaign[]>([]);
   const [labels, setLabels] = useState<MetaLabels>({});
   const [targets] = useState<MetaTargets>(DEFAULT_TARGETS);
-  const [mainTab, setMainTab] = useState<MainTab>("analysis");
+  const [mainTab, setMainTab] = useState<MainTab>("seguimiento");
   const [analysisTab, setAnalysisTab] = useState<AnalysisTab>("table");
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState("");
@@ -281,7 +283,7 @@ export default function Dashboard() {
         onLogout={logout}
         onCreatePresentation={() => { setMainTab("seguimiento"); tbreinRef.current?.openExport(); }}
         hasTbreinData={mainTab === "seguimiento"}
-        metaQuick={earlyToken && mainTab !== "seguimiento" ? {
+        metaQuick={earlyToken && mainTab === "analysis" ? {
           accountName: earlyAccounts.find((a) => a.id === selectedAccountId)?.name ?? metaConnection?.accountName ?? "",
           accountId: selectedAccountId,
           accounts: earlyAccounts,
@@ -344,6 +346,42 @@ export default function Dashboard() {
             <ThemeToggle />
           </div>
         </header>
+
+        {/* TBREIN top tab bar — visible across Seguimiento / Análisis / Reportes */}
+        {(mainTab === "seguimiento" || mainTab === "analysis" || mainTab === "reports") && (
+          <div className="border-b border-outline-variant bg-surface/50 px-4 md:px-8">
+            <div className="max-w-[1440px] mx-auto w-full flex items-center gap-1 overflow-x-auto">
+              {([
+                { key: "leads",     label: "Performance leads", icon: <Users className="w-3.5 h-3.5" />,           active: mainTab === "seguimiento",                          onClick: () => setMainTab("seguimiento") },
+                { key: "table",     label: "Tabla",             icon: <TableIcon className="w-3.5 h-3.5" />,        active: mainTab === "analysis" && analysisTab === "table",  onClick: () => { setMainTab("analysis"); setAnalysisTab("table"); } },
+                { key: "charts",    label: "Gráficos",          icon: <LineChartIcon className="w-3.5 h-3.5" />,    active: mainTab === "analysis" && analysisTab === "charts", onClick: () => { setMainTab("analysis"); setAnalysisTab("charts"); } },
+                { key: "compare",   label: "Comparar",          icon: <Repeat className="w-3.5 h-3.5" />,           active: mainTab === "analysis" && analysisTab === "compare",onClick: () => { setMainTab("analysis"); setAnalysisTab("compare"); } },
+                { key: "budget",    label: "Presupuesto",       icon: <Wallet className="w-3.5 h-3.5" />,           active: mainTab === "analysis" && analysisTab === "budget", onClick: () => { setMainTab("analysis"); setAnalysisTab("budget"); } },
+                { key: "structure", label: "Estructura",        icon: <Network className="w-3.5 h-3.5" />,          active: mainTab === "analysis" && analysisTab === "structure", onClick: () => { setMainTab("analysis"); setAnalysisTab("structure"); } },
+                { key: "reports",   label: "Reportes",          icon: <FileText className="w-3.5 h-3.5" />,         active: mainTab === "reports",                              onClick: () => setMainTab("reports") },
+              ]).map((t) => (
+                <button
+                  key={t.key}
+                  onClick={t.onClick}
+                  className={
+                    "flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors " +
+                    (t.active
+                      ? "border-primary text-on-surface"
+                      : "border-transparent text-on-surface-variant hover:text-on-surface")
+                  }
+                >
+                  {t.icon}
+                  {t.label}
+                  {t.key === "reports" && reports.length > 0 && (
+                    <span className="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary text-on-primary">
+                      {reports.length}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <main className="flex-1 px-4 md:px-8 py-8 flex flex-col gap-6 max-w-[1440px] mx-auto w-full">
 

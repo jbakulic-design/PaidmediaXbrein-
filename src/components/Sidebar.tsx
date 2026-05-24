@@ -294,53 +294,15 @@ function NavContent(props: SidebarProps & { onClose?: () => void }) {
 
       {/* ── CTA ────────────────────────────────────────────────────────── */}
       <button
-        onClick={() => { onMainTab("analysis"); onClose?.(); }}
+        onClick={() => { onMainTab("seguimiento"); onClose?.(); }}
         className="mb-6 w-full py-2.5 px-4 bg-primary text-on-primary text-xs font-semibold rounded-xl hover:bg-primary-fixed-dim transition-colors flex justify-center items-center gap-2"
       >
         <MsIcon name="add" size={18} />
-        Nuevo Análisis
+        Ir a Seguimiento
       </button>
 
       {/* ── Navigation ─────────────────────────────────────────────────── */}
       <nav className="flex-1 flex flex-col gap-1 overflow-y-auto min-h-0">
-
-        <NavItem
-          iconName="analytics"
-          label="Análisis"
-          active={mainTab === "analysis"}
-          onClick={() => { onMainTab("analysis"); onClose?.(); }}
-        />
-
-        {/* Analysis sub-tabs */}
-        {mainTab === "analysis" && hasData && (
-          <div className="ml-4 pl-2 border-l border-outline-variant flex flex-col gap-0.5 my-0.5">
-            {ANALYSIS_TABS
-              .filter((t) => !t.requiresMeta || hasMetaConnection)
-              .map((t) => (
-                <button
-                  key={t.key}
-                  onClick={() => { onAnalysisTab(t.key); onClose?.(); }}
-                  className={cn(
-                    "flex items-center gap-2 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors",
-                    analysisTab === t.key
-                      ? "bg-surface-container-high text-on-surface"
-                      : "text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50"
-                  )}
-                >
-                  <MsIcon name={t.msIcon} size={15} />
-                  {t.label}
-                </button>
-              ))}
-          </div>
-        )}
-
-        <NavItem
-          iconName="description"
-          label="Reportes"
-          active={mainTab === "reports"}
-          onClick={() => { onMainTab("reports"); onClose?.(); }}
-          badge={reportsCount > 0 ? reportsCount : undefined}
-        />
 
         <NavItem
           iconName="gps_fixed"
