@@ -24,14 +24,14 @@ export default function DataDeletionPage() {
         <h2 className="text-base font-semibold mb-3">Cómo eliminar tus datos</h2>
         <p className="mb-4">
           Para eliminar completamente el acceso de esta aplicación a tu cuenta de Meta y revocar
-          cualquier token emitido, seguí estos pasos:
+          cualquier token emitido, sigue estos pasos:
         </p>
 
         <ol className="list-decimal pl-5 space-y-4">
           <li>
             <strong>Revocar acceso desde Meta:</strong>
             <br />
-            Andá a{" "}
+            Ve a{" "}
             <a
               href="https://www.facebook.com/settings?tab=business_tools"
               target="_blank"
@@ -40,7 +40,7 @@ export default function DataDeletionPage() {
             >
               facebook.com/settings → Aplicaciones y sitios web
             </a>
-            , buscá <em>ads manager</em> o <em>Paid Media Analyzer</em> y hacé clic en
+            , busca <em>ads manager</em> o <em>Paid Media Analyzer</em> y haz clic en
             <strong> Eliminar</strong>. Esto revoca el token y Meta elimina los datos
             compartidos con la app.
           </li>
@@ -48,9 +48,9 @@ export default function DataDeletionPage() {
           <li>
             <strong>Limpiar datos locales del navegador:</strong>
             <br />
-            En tu navegador, abrí las herramientas de desarrollo (F12) → pestaña
-            <em> Application</em> → <em>Local Storage</em> → seleccioná el dominio de la app
-            y borrá las entradas, o simplemente cerrá sesión desde el botón de la herramienta.
+            En tu navegador, abre las herramientas de desarrollo (F12) → pestaña
+            <em> Application</em> → <em>Local Storage</em> → selecciona el dominio de la app
+            y elimina las entradas, o simplemente cierra sesión desde el botón de la herramienta.
           </li>
         </ol>
       </section>
@@ -58,8 +58,8 @@ export default function DataDeletionPage() {
       <section className="mb-8">
         <h2 className="text-base font-semibold mb-3">Solicitud de eliminación por email</h2>
         <p>
-          Si querés confirmar que no existen datos tuyos almacenados o necesitás asistencia,
-          enviá un email a{" "}
+          Si deseas confirmar que no existen datos tuyos almacenados o necesitas asistencia,
+          envía un email a{" "}
           <a href="mailto:info@tbrein.com" className="underline text-blue-500">
             info@tbrein.com
           </a>{" "}
@@ -69,7 +69,7 @@ export default function DataDeletionPage() {
       </section>
 
       <p className="text-xs text-gray-400 mt-12 border-t pt-6">
-        Para más información sobre cómo tratamos tus datos, consultá nuestra{" "}
+        Para más información sobre cómo tratamos tus datos, consulta nuestra{" "}
         <a href="/privacy" className="underline text-blue-400">
           Política de Privacidad
         </a>

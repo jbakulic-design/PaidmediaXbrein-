@@ -442,7 +442,7 @@ export function BudgetProjection({ campaigns, datePreset = "last_30d" }: Props) 
             {monthlyBudget === 0 ? (
               <div className="rounded-lg px-4 py-6 text-center" style={{ background: "var(--accent)" }}>
                 <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
-                  Ingresá el presupuesto mensual total para distribuirlo entre tus campañas.
+                  Ingresa el presupuesto mensual total para distribuirlo entre tus campañas.
                 </p>
               </div>
             ) : (
@@ -586,7 +586,7 @@ export function BudgetProjection({ campaigns, datePreset = "last_30d" }: Props) 
                 </div>
 
                 <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
-                  * Hacé clic en cualquier valor de % , asignación o presupuesto diario para editarlo. Los cambios se guardan automáticamente. 🔵 = valor editado manualmente.
+                  * Haz clic en cualquier valor de % , asignación o presupuesto diario para editarlo. Los cambios se guardan automáticamente. 🔵 = valor editado manualmente.
                 </p>
               </>
             )}

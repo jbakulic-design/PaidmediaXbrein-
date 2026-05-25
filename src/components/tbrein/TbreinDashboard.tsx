@@ -94,9 +94,9 @@ export const TbreinDashboard = forwardRef<TbreinDashboardHandle, Props>(
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
         <Zap className="w-8 h-8 text-amber-400" />
-        <p className="text-sm font-semibold">Conectá tu cuenta de Meta primero</p>
+        <p className="text-sm font-semibold">Conecta tu cuenta de Meta primero</p>
         <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
-          Usá el panel de la izquierda para conectarte con Meta API.
+          Usa el panel de la izquierda para conectarte con Meta API.
         </p>
       </div>
     );
@@ -146,9 +146,9 @@ export const TbreinDashboard = forwardRef<TbreinDashboardHandle, Props>(
           className="rounded-xl border px-6 py-12 flex flex-col items-center gap-2 text-center"
           style={{ borderColor: "var(--border)", background: "var(--card)" }}
         >
-          <p className="text-sm font-semibold">Seleccioná una cuenta publicitaria</p>
+          <p className="text-sm font-semibold">Selecciona una cuenta publicitaria</p>
           <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
-            Usá el selector de arriba para cargar los datos de tu cuenta de Meta Ads.
+            Usa el selector de arriba para cargar los datos de tu cuenta de Meta Ads.
           </p>
         </div>
       )}

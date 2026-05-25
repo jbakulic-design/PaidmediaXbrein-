@@ -8,12 +8,12 @@ import { X, Sparkles, MessageCircle } from "lucide-react";
 const MESSAGES = [
   "¡Hola! Soy ROI 👋 tu próximo asistente.",
   "Sí, me llamo como la métrica favorita de todos. 😎",
-  "Pronto vas a poder preguntarme: '¿Qué campaña rinde mejor?' ✨",
-  "Te voy a leer las métricas y darte insights al instante. 🚀",
-  "Estoy entrenándome para hacerte ganar tiempo. ¡Te aviso cuando esté listo! 🤖",
+  "Pronto podrás preguntarme: '¿Qué campaña rinde mejor?' ✨",
+  "Leeré tus métricas y te daré insights al instante. 🚀",
+  "Me estoy entrenando para ayudarte a ganar tiempo. ¡Te avisaré cuando esté listo! 🤖",
 ];
 
-const SHADOW_MESSAGE = "Hey, aquí sigo… por si me necesitás, entre las sombras 🌙";
+const SHADOW_MESSAGE = "Hey, aquí sigo… por si me necesitas, entre las sombras 🌙";
 
 export function AssistantMascot() {
   const [mounted,        setMounted]        = useState(false);
@@ -96,7 +96,7 @@ export function AssistantMascot() {
             <button
               onClick={minimize}
               className="absolute top-1.5 right-1.5 p-1 rounded hover:bg-accent/60 transition"
-              title="Minimizar — ROI sigue acá por si lo necesitás"
+              title="Minimizar — ROI sigue aquí por si lo necesitas"
             >
               <X className="w-3 h-3" style={{ color: "var(--muted-foreground)" }} />
             </button>
@@ -202,7 +202,7 @@ export function AssistantMascot() {
             : "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 60%, #ec4899 100%)",
           borderColor: "rgba(255,255,255,0.15)",
         }}
-        title={expanded ? "Minimizar ROI" : "Volver a saludar a ROI"}
+        title={expanded ? "Minimizar ROI" : "Volver a abrir ROI"}
       >
         {/* Floating + waving emoji */}
         <motion.span

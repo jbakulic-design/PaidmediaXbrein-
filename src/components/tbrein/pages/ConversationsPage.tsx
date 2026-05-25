@@ -199,7 +199,7 @@ export function ConversationsPage({ data, prevData, compareEnabled }: Props) {
         >
           <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
           Las campañas no tienen objetivo de mensajes clasificado — se muestran todas las campañas.
-          Para filtrado preciso, verificá los objetivos en tu cuenta de Ads Manager.
+          Para filtrado preciso, verifica los objetivos en tu cuenta de Ads Manager.
         </div>
       )}
 

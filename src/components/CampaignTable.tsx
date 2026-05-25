@@ -67,7 +67,7 @@ function TargetEditor({
         <button onClick={onClose} style={{ color: "var(--muted-foreground)" }}><X className="w-3.5 h-3.5" /></button>
       </div>
       <p className="text-xs mb-3" style={{ color: "var(--muted-foreground)" }}>
-        Dejá vacío para usar el objetivo global. Estos valores sobreescriben los targets generales solo para esta campaña.
+        Deja vacío para usar el objetivo global. Estos valores sobreescriben los targets generales solo para esta campaña.
       </p>
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
         {field("roas", "ROAS obj.")}

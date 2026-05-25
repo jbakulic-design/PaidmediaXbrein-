@@ -139,7 +139,7 @@ function MetaQuickPanel({ s }: { s: MetaQuickSettings }) {
     a.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const accountLabel = s.accountName || (s.accountId ? s.accountId : "Seleccioná una cuenta");
+  const accountLabel = s.accountName || (s.accountId ? s.accountId : "Selecciona una cuenta");
 
   return (
     <div className="mt-1 mb-1">
@@ -176,7 +176,7 @@ function MetaQuickPanel({ s }: { s: MetaQuickSettings }) {
               onChange={(e) => s.onAccount(e.target.value)}
               className="rounded-lg border border-outline-variant bg-surface-container px-2 py-1 text-xs text-on-surface outline-none focus:ring-1 focus:ring-primary/40"
             >
-              {!s.accountId && <option value="" disabled>— Seleccioná una cuenta —</option>}
+              {!s.accountId && <option value="" disabled>— Selecciona una cuenta —</option>}
               {filteredAccounts.map((a) => (
                 <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>
               ))}
@@ -374,9 +374,9 @@ export function Sidebar(props: SidebarProps) {
       {/* Mobile hamburger */}
       <button
         onClick={() => setMobileOpen(true)}
-        className="md:hidden fixed top-4 left-4 z-50 flex items-center justify-center w-8 h-8 rounded-lg border border-outline-variant bg-surface-container text-on-surface"
+        className="md:hidden fixed top-2.5 left-3 z-50 flex items-center justify-center w-7 h-7 rounded-lg border border-outline-variant bg-surface-container text-on-surface"
       >
-        <Menu className="w-4 h-4" />
+        <Menu className="w-3.5 h-3.5" />
       </button>
 
       {/* Mobile overlay */}

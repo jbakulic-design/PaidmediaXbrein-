@@ -812,7 +812,7 @@ export function StructureOverview({ token, accountId }: Props) {
       <div>
         <h3 className="text-sm font-bold">Configuración de la cuenta</h3>
         <p className="text-xs mt-0.5" style={{ color: "var(--muted-foreground)" }}>
-          Expandí cada campaña para ver exactamente cómo está configurada en Meta Ads.
+          Expande cada campaña para ver exactamente cómo está configurada en Meta Ads.
         </p>
       </div>
 
@@ -831,7 +831,7 @@ export function StructureOverview({ token, accountId }: Props) {
           <Layers className="w-3.5 h-3.5 text-blue-400" />
           <p className="text-xs font-semibold">
             {campaigns.length} {campaigns.length === 1 ? "campaña" : "campañas"} ·{" "}
-            <span style={{ color: "var(--muted-foreground)" }}>hacé clic para ver configuración</span>
+            <span style={{ color: "var(--muted-foreground)" }}>haz clic para ver configuración</span>
           </p>
         </div>
 

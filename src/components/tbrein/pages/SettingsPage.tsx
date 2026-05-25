@@ -124,7 +124,7 @@ export function SettingsPage({ token, accountName, accountId, onLogout }: Props)
         {token && (
           <Row
             label="Token de acceso"
-            description="Copiá el token para usarlo en otras herramientas"
+            description="Copia el token para usarlo en otras herramientas"
           >
             <button
               onClick={copyToken}
@@ -139,7 +139,7 @@ export function SettingsPage({ token, accountName, accountId, onLogout }: Props)
         {token && onLogout && (
           <Row
             label="Cerrar sesión de Meta"
-            description="Desconectá tu cuenta de Facebook y eliminá el token de la sesión"
+            description="Desconecta tu cuenta de Facebook y elimina el token de la sesión"
           >
             <button
               onClick={onLogout}
@@ -156,7 +156,7 @@ export function SettingsPage({ token, accountName, accountId, onLogout }: Props)
       <Section title="Apariencia">
         <Row
           label="Tema oscuro"
-          description="Activá el tema oscuro para reducir la fatiga visual"
+          description="Activa el tema oscuro para reducir la fatiga visual"
         >
           <Toggle checked={isDark} onChange={(v) => setTheme(v ? "dark" : "light")} />
         </Row>

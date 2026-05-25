@@ -29,7 +29,7 @@ export function GitHubSettings({ onConfigChange }: Props) {
         `https://api.github.com/repos/${form.owner}/${form.repo}/contents/`,
         { headers: { Authorization: `Bearer ${form.token}`, Accept: "application/vnd.github.v3+json" } }
       );
-      if (!res.ok) throw new Error(`Error ${res.status} — verificá el token y el repositorio`);
+      if (!res.ok) throw new Error(`Error ${res.status} — verifica el token y el repositorio`);
       saveGitHubConfig(form);
       setConnected(true);
       setStatus("ok");

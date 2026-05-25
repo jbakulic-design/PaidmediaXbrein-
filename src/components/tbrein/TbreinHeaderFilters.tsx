@@ -120,13 +120,13 @@ export function TbreinHeaderFilters({
     : SEGUIMIENTO_PRESET_LABELS[preset];
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1.5 flex-wrap">
 
       {/* ── Account ─────────────────────────────────────────────────────────── */}
       <div ref={acctRef} className="relative">
         <button
           onClick={() => setShowAccount(v => !v)}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border hover:bg-accent/60 transition max-w-[200px]"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border hover:bg-accent/60 transition max-w-[160px] sm:max-w-[200px]"
           style={{ borderColor: "var(--border)", background: "var(--card)" }}
         >
           <span className="truncate">{account?.name ?? "Seleccionar cuenta"}</span>
@@ -140,7 +140,7 @@ export function TbreinHeaderFilters({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.15 }}
-              className="absolute top-full mt-1 left-0 z-50 w-72 rounded-xl border shadow-xl p-2 flex flex-col gap-1"
+              className="absolute top-full mt-1 left-0 z-50 w-[min(288px,calc(100vw-1.5rem))] rounded-xl border shadow-xl p-2 flex flex-col gap-1"
               style={{ borderColor: "var(--border)", background: "var(--card)" }}
             >
               <div className="relative">
@@ -193,7 +193,7 @@ export function TbreinHeaderFilters({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.15 }}
-              className="absolute top-full mt-1 left-0 z-50 w-80 rounded-xl border shadow-xl p-3 flex flex-col gap-3"
+              className="absolute top-full mt-1 left-0 z-50 w-[min(320px,calc(100vw-1.5rem))] rounded-xl border shadow-xl p-3 flex flex-col gap-3"
               style={{ borderColor: "var(--border)", background: "var(--card)" }}
             >
               {/* Presets */}

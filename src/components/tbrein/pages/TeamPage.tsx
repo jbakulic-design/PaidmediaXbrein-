@@ -44,7 +44,7 @@ export function TeamPage() {
         <div>
           <h2 className="text-lg font-bold">Equipo</h2>
           <p className="text-xs mt-1" style={{ color: "var(--muted-foreground)" }}>
-            Gestioná quién tiene acceso a la plataforma y qué puede ver o hacer.
+            Gestiona quién tiene acceso a la plataforma y qué puede ver o hacer.
           </p>
         </div>
         <ComingSoonBadge />
@@ -81,17 +81,17 @@ export function TeamPage() {
           <FeatureRow
             icon="person_add"
             title="Invitar miembros"
-            description="Enviá invitaciones por email para que otras personas del equipo accedan a la plataforma."
+            description="Envía invitaciones por email para que otras personas del equipo accedan a la plataforma."
           />
           <FeatureRow
             icon="admin_panel_settings"
             title="Roles y permisos"
-            description="Definí quién puede ver qué cuentas, quién puede editar y quién solo puede leer."
+            description="Define quién puede ver qué cuentas, quién puede editar y quién solo puede leer."
           />
           <FeatureRow
             icon="lock"
             title="Acceso por cuenta"
-            description="Restringí qué cuentas publicitarias puede ver cada miembro del equipo."
+            description="Restringe qué cuentas publicitarias puede ver cada miembro del equipo."
           />
           <FeatureRow
             icon="history"
@@ -112,9 +112,9 @@ export function TeamPage() {
         style={{ borderColor: "var(--border)", background: "var(--card)" }}
       >
         <div className="flex flex-col gap-1">
-          <p className="text-sm font-semibold">¿Necesitás acceso multi-usuario ahora?</p>
+          <p className="text-sm font-semibold">¿Necesitas acceso multi-usuario ahora?</p>
           <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
-            Contactá a TBREIN para coordinar una solución temporal mientras se desarrolla esta funcionalidad.
+            Contacta a TBREIN para coordinar una solución temporal mientras se desarrolla esta funcionalidad.
           </p>
         </div>
         <a

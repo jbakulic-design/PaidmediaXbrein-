@@ -337,7 +337,7 @@ export function LeadsPage({ data, prevData, compareEnabled, accountId, dateRange
         >
           <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
           Las campañas no tienen objetivo clasificado — se muestran todas.
-          Para filtrado preciso, verificá los objetivos en Ads Manager.
+          Para filtrado preciso, verifica los objetivos en Ads Manager.
         </div>
       )}
 

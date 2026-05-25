@@ -105,7 +105,7 @@ export function ComparePanel({ campaigns, campaignType }: Props) {
       {/* Campaign selector */}
       <div className="rounded-xl border" style={{ borderColor: "var(--border)", background: "var(--card)" }}>
         <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: "var(--border)" }}>
-          <p className="text-sm font-semibold">Seleccioná campañas para comparar</p>
+          <p className="text-sm font-semibold">Selecciona campañas para comparar</p>
           <span className="text-xs" style={{ color: "var(--muted-foreground)" }}>
             {selected.length}/4 seleccionadas
           </span>
@@ -199,13 +199,13 @@ export function ComparePanel({ campaigns, campaignType }: Props) {
 
       {compared.length === 1 && (
         <p className="text-sm text-center py-4" style={{ color: "var(--muted-foreground)" }}>
-          Seleccioná al menos una campaña más para ver la comparación.
+          Selecciona al menos una campaña más para ver la comparación.
         </p>
       )}
 
       {compared.length === 0 && (
         <p className="text-sm text-center py-4" style={{ color: "var(--muted-foreground)" }}>
-          Seleccioná 2 o más campañas de la lista para compararlas.
+          Selecciona 2 o más campañas de la lista para compararlas.
         </p>
       )}
     </div>

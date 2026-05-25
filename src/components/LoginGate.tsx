@@ -40,7 +40,7 @@ export function LoginGate({ onLogin }: Props) {
           <div className="text-center">
             <h1 className="text-xl font-bold">Paid Media Analyzer</h1>
             <p className="text-sm mt-1" style={{ color: "var(--muted-foreground)" }}>
-              Ingresá tu contraseña para continuar
+              Ingresa tu contraseña para continuar
             </p>
           </div>
         </div>

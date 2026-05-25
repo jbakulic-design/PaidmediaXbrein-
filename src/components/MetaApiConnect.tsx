@@ -35,7 +35,7 @@ export function MetaApiConnect({
         /* ── No conectado ──────────────────────────────────────── */
         <div className="flex flex-col items-center gap-3 py-4">
           <p className="text-xs text-center" style={{ color: "var(--muted-foreground)" }}>
-            Iniciá sesión con tu cuenta de Meta para cargar las campañas directamente.
+            Inicia sesión con tu cuenta de Meta para cargar las campañas directamente.
           </p>
 
           {!showTokenInput ? (
@@ -66,7 +66,7 @@ export function MetaApiConnect({
           ) : (
             <div className="flex flex-col gap-2 w-full max-w-sm">
               <p className="text-xs text-center" style={{ color: "var(--muted-foreground)" }}>
-                Pegá tu token de acceso de Meta (se guardará automáticamente)
+                Pega tu token de acceso de Meta (se guardará automáticamente)
               </p>
               <input
                 autoFocus
@@ -112,7 +112,7 @@ export function MetaApiConnect({
             Conectado a Meta
           </div>
           <p className="text-xs text-center" style={{ color: "var(--muted-foreground)" }}>
-            Seleccioná tu cuenta en el <strong>menú lateral izquierdo</strong> y hacé clic en <strong>Cargar campañas</strong>.
+            Selecciona tu cuenta en el <strong>menú lateral izquierdo</strong> y haz clic en <strong>Cargar campañas</strong>.
           </p>
           <button
             onClick={onLogout}

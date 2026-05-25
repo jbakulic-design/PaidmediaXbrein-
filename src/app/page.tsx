@@ -322,7 +322,7 @@ export default function Dashboard() {
       <div className="flex-1 flex flex-col min-w-0">
 
         {/* TopNavBar */}
-        <header className="sticky top-0 z-40 w-full bg-surface/80 backdrop-blur-md border-b border-outline-variant flex justify-between items-center h-16 px-6 md:pl-6 pl-14 gap-4">
+        <header className="sticky top-0 z-40 w-full bg-surface/80 backdrop-blur-md border-b border-outline-variant flex justify-between items-center h-12 md:h-16 px-3 md:px-6 pl-12 md:pl-6 gap-2 md:gap-4">
           <div className="flex items-center gap-4 min-w-0 flex-1">
             <span className="text-base font-black text-on-surface tracking-tight hidden sm:block shrink-0">XBREIN</span>
             {mainTab !== "seguimiento" && (
@@ -375,23 +375,24 @@ export default function Dashboard() {
 
         {/* TBREIN top tab bar — visible across Seguimiento / Análisis / Reportes */}
         {(mainTab === "seguimiento" || mainTab === "analysis" || mainTab === "reports") && (
-          <div className="border-b border-outline-variant bg-surface/50 px-4 md:px-8">
-            <div className="max-w-[1440px] mx-auto w-full flex items-center gap-1 overflow-x-auto">
+          <div className="border-b border-outline-variant bg-surface/50 px-2 md:px-8">
+            <div className="max-w-[1440px] mx-auto w-full flex items-center gap-0 overflow-x-auto scrollbar-none">
               {([
-                { key: "leads",     label: "Seguimiento TBREIN", icon: <Users className="w-3.5 h-3.5" />,           active: mainTab === "seguimiento" && tbreinView === "leads", onClick: () => { setMainTab("seguimiento"); setTbreinView("leads"); } },
-                { key: "table",     label: "Tabla",             icon: <TableIcon className="w-3.5 h-3.5" />,        active: mainTab === "analysis" && analysisTab === "table",  onClick: () => { setMainTab("analysis"); setAnalysisTab("table"); } },
-                { key: "charts",    label: "Gráficos",          icon: <LineChartIcon className="w-3.5 h-3.5" />,    active: mainTab === "analysis" && analysisTab === "charts", onClick: () => { setMainTab("analysis"); setAnalysisTab("charts"); } },
-                { key: "compare",   label: "Comparar",          icon: <Repeat className="w-3.5 h-3.5" />,           active: mainTab === "analysis" && analysisTab === "compare",onClick: () => { setMainTab("analysis"); setAnalysisTab("compare"); } },
-                { key: "budget",    label: "Presupuesto",       icon: <Wallet className="w-3.5 h-3.5" />,           active: mainTab === "analysis" && analysisTab === "budget", onClick: () => { setMainTab("analysis"); setAnalysisTab("budget"); } },
-                { key: "structure", label: "Estructura",        icon: <Network className="w-3.5 h-3.5" />,          active: mainTab === "analysis" && analysisTab === "structure", onClick: () => { setMainTab("analysis"); setAnalysisTab("structure"); } },
-                { key: "reports",   label: "Reportes",          icon: <FileText className="w-3.5 h-3.5" />,         active: mainTab === "reports",                              onClick: () => setMainTab("reports") },
-                { key: "export",    label: "Crear presentación",icon: <Presentation className="w-3.5 h-3.5" />,    active: mainTab === "seguimiento" && tbreinView === "export", onClick: () => { setMainTab("seguimiento"); setTbreinView("export"); tbreinRef.current?.openExport(); } },
+                { key: "leads",     label: "Seguimiento", icon: <Users className="w-3.5 h-3.5" />,           active: mainTab === "seguimiento" && tbreinView === "leads", onClick: () => { setMainTab("seguimiento"); setTbreinView("leads"); } },
+                { key: "table",     label: "Tabla",       icon: <TableIcon className="w-3.5 h-3.5" />,        active: mainTab === "analysis" && analysisTab === "table",  onClick: () => { setMainTab("analysis"); setAnalysisTab("table"); } },
+                { key: "charts",    label: "Gráficos",    icon: <LineChartIcon className="w-3.5 h-3.5" />,    active: mainTab === "analysis" && analysisTab === "charts", onClick: () => { setMainTab("analysis"); setAnalysisTab("charts"); } },
+                { key: "compare",   label: "Comparar",    icon: <Repeat className="w-3.5 h-3.5" />,           active: mainTab === "analysis" && analysisTab === "compare",onClick: () => { setMainTab("analysis"); setAnalysisTab("compare"); } },
+                { key: "budget",    label: "Presupuesto", icon: <Wallet className="w-3.5 h-3.5" />,           active: mainTab === "analysis" && analysisTab === "budget", onClick: () => { setMainTab("analysis"); setAnalysisTab("budget"); } },
+                { key: "structure", label: "Estructura",  icon: <Network className="w-3.5 h-3.5" />,          active: mainTab === "analysis" && analysisTab === "structure", onClick: () => { setMainTab("analysis"); setAnalysisTab("structure"); } },
+                { key: "reports",   label: "Reportes",    icon: <FileText className="w-3.5 h-3.5" />,         active: mainTab === "reports",                              onClick: () => setMainTab("reports") },
+                { key: "export",    label: "PPT",         icon: <Presentation className="w-3.5 h-3.5" />,    active: mainTab === "seguimiento" && tbreinView === "export", onClick: () => { setMainTab("seguimiento"); setTbreinView("export"); tbreinRef.current?.openExport(); } },
               ]).map((t) => (
                 <button
                   key={t.key}
                   onClick={t.onClick}
+                  title={t.label}
                   className={
-                    "relative flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium whitespace-nowrap transition-colors " +
+                    "relative flex items-center gap-1.5 px-2.5 sm:px-3 py-2.5 text-xs font-medium whitespace-nowrap transition-colors " +
                     (t.active
                       ? "text-on-surface"
                       : "text-on-surface-variant hover:text-on-surface")
@@ -399,9 +400,9 @@ export default function Dashboard() {
                   style={!t.active ? { color: "var(--foreground)", opacity: 0.65 } : undefined}
                 >
                   {t.icon}
-                  {t.label}
+                  <span className="hidden sm:inline">{t.label}</span>
                   {t.key === "reports" && reports.length > 0 && (
-                    <span className="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary text-on-primary">
+                    <span className="ml-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary text-on-primary">
                       {reports.length}
                     </span>
                   )}
@@ -418,7 +419,29 @@ export default function Dashboard() {
           </div>
         )}
 
-        <main className="flex-1 px-4 md:px-8 py-8 flex flex-col gap-6 max-w-[1440px] mx-auto w-full">
+        {/* Mobile filter strip — shown only on small screens when token is present */}
+        {(mainTab === "seguimiento" || mainTab === "analysis" || mainTab === "reports") && earlyToken && (
+          <div className="md:hidden border-b border-outline-variant bg-surface/50 px-3 py-2 overflow-x-auto scrollbar-none">
+            <TbreinHeaderFilters
+              accounts={earlyAccounts}
+              accountId={tbreinAccountId}
+              onAccount={handleTbreinAccount}
+              range={tbreinRange}
+              preset={tbreinPreset}
+              onRange={handleTbreinRange}
+              compareEnabled={tbreinCompareEnabled}
+              onCompareToggle={setTbreinCompareEnabled}
+              loading={mainTab === "analysis" ? metaLoading : undefined}
+              showCompare={mainTab === "seguimiento"}
+              showAnalysisControls={mainTab === "analysis"}
+              level={metaLevel}
+              onLevel={setMetaLevel}
+              onReload={handleLoadCampaigns}
+            />
+          </div>
+        )}
+
+        <main className="flex-1 px-3 md:px-8 py-4 md:py-8 flex flex-col gap-4 md:gap-6 max-w-[1440px] mx-auto w-full">
 
           {/* Breadcrumb — only on TBREIN content tabs */}
           {(() => {
@@ -487,7 +510,7 @@ export default function Dashboard() {
                     )}
                     <p className="text-2xl font-bold">¿Desde dónde cargamos los datos?</p>
                     <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
-                      {selectedSource ? "Configurá la conexión y los datos se cargarán automáticamente" : "Elegí una fuente para empezar el análisis"}
+                      {selectedSource ? "Configura la conexión y los datos se cargarán automáticamente" : "Elige una fuente para empezar el análisis"}
                     </p>
                   </div>
 
@@ -521,7 +544,7 @@ export default function Dashboard() {
                         <div>
                           <p className="font-semibold text-sm">Subir Excel</p>
                           <p className="text-xs mt-1" style={{ color: "var(--muted-foreground)" }}>
-                            Importá una exportación de Meta Ads Manager (.xlsx, .csv)
+                            Importa una exportación de Meta Ads Manager (.xlsx, .csv)
                           </p>
                         </div>
                         <span className="text-xs font-semibold" style={{ color: "var(--muted-foreground)" }}>Seleccionar archivo →</span>

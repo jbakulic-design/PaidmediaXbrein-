@@ -177,7 +177,7 @@ export function GlobalFilters({
             style={{ background: "var(--accent)", borderColor: "var(--border)", color: "var(--foreground)" }}
           >
             {!accountId && (
-              <option value="" disabled>— Seleccioná una cuenta —</option>
+              <option value="" disabled>— Selecciona una cuenta —</option>
             )}
             {filteredAccounts.map((a) => (
               <option key={a.id} value={a.id}>

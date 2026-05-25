@@ -87,7 +87,7 @@ export function MetricPickerPanel({ open, onToggle, options, selected, onChange 
             >
               {/* Hint */}
               <p className="text-[11px]" style={{ color: "var(--muted-foreground)" }}>
-                Seleccioná las métricas que quierás ver. Los action types de Meta disponibles en el período aparecen en{" "}
+                Selecciona las métricas que deseas ver. Los action types de Meta disponibles en el período aparecen en{" "}
                 <strong>Conversiones y leads</strong>.
               </p>
 

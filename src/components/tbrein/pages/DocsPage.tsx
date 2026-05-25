@@ -85,19 +85,19 @@ const TABS_DOCS = [
     key: "ecomm",
     title: "Pestaña E-commerce",
     icon: "shopping_cart",
-    content: `Muestra el rendimiento de todas las campañas sin filtrar por objetivo.\n\nMétricas principales: ROAS, CPA, Compras, Ingresos atribuidos, Gasto total.\n\nUsala para clientes que venden productos online y quieren ver la relación entre inversión y ventas. El ROAS es el indicador clave: si está por debajo de 1x, la campaña está perdiendo dinero.`,
+    content: `Muestra el rendimiento de todas las campañas sin filtrar por objetivo.\n\nMétricas principales: ROAS, CPA, Compras, Ingresos atribuidos, Gasto total.\n\nÚsala para clientes que venden productos online y quieren ver la relación entre inversión y ventas. El ROAS es el indicador clave: si está por debajo de 1x, la campaña está perdiendo dinero.`,
   },
   {
     key: "leads",
     title: "Pestaña Leads",
     icon: "group",
-    content: `Filtra automáticamente las campañas con objetivo de generación de leads. Si ninguna tiene ese objetivo declarado, muestra las que tengan leads reales registrados.\n\nMétricas principales: CPL (costo por lead), cantidad de leads, Lead rate (leads / clics).\n\nUsala para clientes que buscan captar personas interesadas en sus servicios (formularios, registros, consultas).`,
+    content: `Filtra automáticamente las campañas con objetivo de generación de leads. Si ninguna tiene ese objetivo declarado, muestra las que tengan leads reales registrados.\n\nMétricas principales: CPL (costo por lead), cantidad de leads, Lead rate (leads / clics).\n\nÚsala para clientes que buscan captar personas interesadas en sus servicios (formularios, registros, consultas).`,
   },
   {
     key: "convs",
     title: "Pestaña Conversaciones",
     icon: "chat",
-    content: `Filtra campañas con objetivo de mensajes (WhatsApp, Messenger, Instagram DM). Tiene la misma lógica de fallback: si no hay objetivo declarado, muestra las que tengan conversaciones reales.\n\nMétricas principales: Costo por conversación, cantidad de conversaciones iniciadas, tasa de conversación (conv / clics).\n\nUsala para clientes cuyo modelo de negocio depende de que la gente inicie un chat antes de comprar.`,
+    content: `Filtra campañas con objetivo de mensajes (WhatsApp, Messenger, Instagram DM). Tiene la misma lógica de fallback: si no hay objetivo declarado, muestra las que tengan conversaciones reales.\n\nMétricas principales: Costo por conversación, cantidad de conversaciones iniciadas, tasa de conversación (conv / clics).\n\nÚsala para clientes cuyo modelo de negocio depende de que la gente inicie un chat antes de comprar.`,
   },
 ];
 

@@ -20,20 +20,20 @@ export function MetricsInput({ onData }: MetricsInputProps) {
       setError("");
       setSuccess("");
       if (!file.name.match(/\.(xlsx|xls|csv)$/i)) {
-        setError("Formato no soportado. Usá .xlsx, .xls o .csv");
+        setError("Formato no soportado. Usa .xlsx, .xls o .csv");
         return;
       }
       try {
         const buf = await file.arrayBuffer();
         const { campaigns, labels } = parseExcel(buf);
         if (campaigns.length === 0) {
-          setError("No se encontraron campañas en el archivo. Verificá los encabezados.");
+          setError("No se encontraron campañas en el archivo. Verifica los encabezados.");
           return;
         }
         setSuccess(`${campaigns.length} campañas cargadas desde "${file.name}"`);
         onData(campaigns, labels);
       } catch {
-        setError("Error al leer el archivo. Verificá que sea un Excel válido.");
+        setError("Error al leer el archivo. Verifica que sea un Excel válido.");
       }
     },
     [onData]
@@ -59,7 +59,7 @@ export function MetricsInput({ onData }: MetricsInputProps) {
     <div className="rounded-xl border" style={{ borderColor: "var(--border)", background: "var(--card)" }}>
       <div className="p-4 flex flex-col gap-3">
         <p className="text-xs font-semibold" style={{ color: "var(--muted-foreground)" }}>
-          O subí un Excel exportado de Meta Ads Manager
+          O sube un Excel exportado de Meta Ads Manager
         </p>
 
         {error && (
@@ -87,7 +87,7 @@ export function MetricsInput({ onData }: MetricsInputProps) {
           <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileInput} />
           <Upload className={cn("w-7 h-7", dragging ? "text-blue-400" : "text-muted-foreground")} />
           <div>
-            <p className="font-semibold text-sm">Arrastrá el archivo o hacé clic para seleccionar</p>
+            <p className="font-semibold text-sm">Arrastra el archivo o haz clic para seleccionar</p>
             <p className="text-xs mt-1" style={{ color: "var(--muted-foreground)" }}>
               Exportaciones de Meta Ads Manager · .xlsx, .xls, .csv
             </p>

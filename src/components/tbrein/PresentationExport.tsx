@@ -43,13 +43,13 @@ interface SlideMeta {
 
 const SLIDE_META: Record<SlideType, SlideMeta> = {
   cover:          { icon: "🎯", label: "Portada",            hasSubtitle: true,  hasBody: false, bodyLabel: "",            bodyPlaceholder: "", removable: false },
-  text:           { icon: "📝", label: "Slide de texto",     hasSubtitle: false, hasBody: true,  bodyLabel: "Texto",       bodyPlaceholder: "Escribí el contenido de la slide acá…", removable: true },
+  text:           { icon: "📝", label: "Slide de texto",     hasSubtitle: false, hasBody: true,  bodyLabel: "Texto",       bodyPlaceholder: "Escribe el contenido de la diapositiva aquí…", removable: true },
   kpis:           { icon: "📊", label: "Métricas clave",     hasSubtitle: false, hasBody: true,  bodyLabel: "Comentario",  bodyPlaceholder: "Opcional — un párrafo introductorio…",   removable: false },
   conv_chart:     { icon: "👥", label: "Conversiones en el tiempo", hasSubtitle: false, hasBody: true, bodyLabel: "Comentario", bodyPlaceholder: "Opcional — observaciones sobre el gráfico…", removable: false },
   cost_chart:     { icon: "💰", label: "Costo / Conv. en el tiempo", hasSubtitle: false, hasBody: true, bodyLabel: "Comentario", bodyPlaceholder: "Opcional — observaciones sobre el gráfico…", removable: false },
   spend_chart:    { icon: "📈", label: "Gasto en el tiempo", hasSubtitle: false, hasBody: true,  bodyLabel: "Comentario",  bodyPlaceholder: "Opcional — observaciones sobre el gráfico…", removable: false },
   campaign_table: { icon: "📋", label: "Tabla de campañas",  hasSubtitle: false, hasBody: true,  bodyLabel: "Introducción", bodyPlaceholder: "Opcional — contexto sobre la tabla…", removable: false },
-  closing:        { icon: "🏁", label: "Cierre",             hasSubtitle: false, hasBody: true,  bodyLabel: "Texto",       bodyPlaceholder: "Escribí los próximos pasos o cierre…", removable: false },
+  closing:        { icon: "🏁", label: "Cierre",             hasSubtitle: false, hasBody: true,  bodyLabel: "Texto",       bodyPlaceholder: "Escribe los próximos pasos o el cierre…", removable: false },
 };
 
 interface Props {
@@ -410,7 +410,7 @@ export function PresentationExport({ data, accountName, dateRange, onClose }: Pr
         className="rounded-xl border px-4 py-3 text-xs"
         style={{ borderColor: "var(--border)", background: "var(--card)", color: "var(--muted-foreground)" }}
       >
-        Armá las diapositivas que querés exportar. Podés activar/desactivar slides, editar títulos y textos, reordenarlas o agregar slides de texto.
+        Organiza las diapositivas que deseas exportar. Puedes activar/desactivar diapositivas, editar títulos y textos, reordenarlas o agregar diapositivas de texto.
         <span className="block mt-1 font-medium" style={{ color: "var(--foreground)" }}>
           {account} · {period}
         </span>
