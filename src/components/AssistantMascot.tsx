@@ -6,12 +6,13 @@ import { X, Sparkles, MessageCircle } from "lucide-react";
 
 const DISMISS_KEY = "tbrein_assistant_dismissed";
 
-// Rotating greeting messages
+// Rotating greeting messages — ROI's personality
 const MESSAGES = [
-  "¡Hola! 👋 Soy IA, tu próximo asistente.",
-  "Pronto podrás preguntarme: '¿Qué campaña tuvo mejor CPL este mes?' ✨",
-  "Voy a analizar tus métricas y darte insights al instante. 🚀",
-  "Te avisaré cuando esté lista. ¡Estoy entrenándome! 🤖",
+  "¡Hola! Soy ROI 👋 tu próximo asistente.",
+  "Sí, me llamo como la métrica favorita de todos. 😎",
+  "Pronto vas a poder preguntarme: '¿Qué campaña rinde mejor?' ✨",
+  "Te voy a leer las métricas y darte insights al instante. 🚀",
+  "Estoy entrenándome para hacerte ganar tiempo. ¡Te aviso cuando esté listo! 🤖",
 ];
 
 export function AssistantMascot() {
@@ -88,8 +89,9 @@ export function AssistantMascot() {
             {/* Header */}
             <div className="flex items-center gap-1.5 mb-1.5">
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <p className="text-xs font-bold tracking-wide">IA Assistant</p>
-              <span className="ml-1 text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 font-semibold">
+              <p className="text-xs font-bold tracking-wide">ROI</p>
+              <span className="text-[9px]" style={{ color: "var(--muted-foreground)" }}>· Asistente IA</span>
+              <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 font-semibold">
                 PRONTO
               </span>
             </div>
@@ -148,7 +150,7 @@ export function AssistantMascot() {
           background: "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 60%, #ec4899 100%)",
           borderColor: "rgba(255,255,255,0.2)",
         }}
-        title={expanded ? "Ocultar mensaje" : "Hola, soy tu próximo asistente IA"}
+        title={expanded ? "Ocultar mensaje" : "Hola, soy ROI — tu próximo asistente IA"}
       >
         {/* Floating + waving emoji */}
         <motion.span
