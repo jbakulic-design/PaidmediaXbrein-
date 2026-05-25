@@ -104,6 +104,18 @@ export default function Dashboard() {
     setTbreinRange(r); setTbreinPreset(p);
   }
 
+  // Sincroniza la cuenta TBREIN con la cuenta de análisis — una sola fuente
+  function handleTbreinAccount(id: string) {
+    setTbreinAccountId(id);
+    setSelectedAccountId(id);
+    saveSelectedAccount(id);
+    // Si ya había campañas cargadas, recarga con la nueva cuenta
+    if (hasLoadedRef.current && earlyToken) {
+      lastFetchedKeyRef.current = "";
+      doFetchCampaigns(earlyToken, id, metaDatePreset, metaLevel, earlyAccounts);
+    }
+  }
+
   // Evita re-fetch del mismo key y rastrea si se cargó al menos una vez
   const lastFetchedKeyRef = useRef("");
   const hasLoadedRef = useRef(false);
@@ -195,6 +207,7 @@ export default function Dashboard() {
   /** Cambio de cuenta desde el sidebar — actualiza selección y recarga si ya había datos */
   const handleMetaAccount = useCallback((accountId: string) => {
     setSelectedAccountId(accountId);
+    setTbreinAccountId(accountId); // mantener sincronizado
     saveSelectedAccount(accountId);
     if (hasLoadedRef.current && earlyToken) {
       lastFetchedKeyRef.current = "";
@@ -209,6 +222,18 @@ export default function Dashboard() {
     doFetchCampaigns(earlyToken, selectedAccountId, metaDatePreset, metaLevel, earlyAccounts);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [metaDatePreset, metaLevel]);
+
+  /** Auto-carga campañas al entrar a un tab de análisis (Tabla, Gráficos, etc.) */
+  useEffect(() => {
+    if (mainTab !== "analysis") return;
+    if (!earlyToken || !selectedAccountId) return;
+    if (metaLoading) return;
+    // Si ya hay campañas cargadas para esta combinación, no recargar
+    const key = `${selectedAccountId}__${metaDatePreset}__${metaLevel}`;
+    if (lastFetchedKeyRef.current === key && campaigns.length > 0) return;
+    doFetchCampaigns(earlyToken, selectedAccountId, metaDatePreset, metaLevel, earlyAccounts);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mainTab, earlyToken, selectedAccountId]);
 
   const handleUpdateCampaignTargets = useCallback((id: string, customTargets: Partial<MetaTargets>) => {
     setCampaigns((prev) =>
@@ -322,7 +347,7 @@ export default function Dashboard() {
                 <TbreinHeaderFilters
                   accounts={earlyAccounts}
                   accountId={tbreinAccountId}
-                  onAccount={setTbreinAccountId}
+                  onAccount={handleTbreinAccount}
                   range={tbreinRange}
                   preset={tbreinPreset}
                   onRange={handleTbreinRange}
