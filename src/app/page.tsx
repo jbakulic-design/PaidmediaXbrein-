@@ -369,6 +369,19 @@ export default function Dashboard() {
                 </span>
               </span>
             )}
+            {/* Botón conectar Meta — visible en header cuando no hay sesión */}
+            {!earlyToken && fbStatus !== "loading" && (mainTab === "seguimiento" || mainTab === "analysis") && (
+              <button
+                onClick={fbLogin}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition"
+                style={{ background: "#1877F2" }}
+              >
+                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                </svg>
+                Conectar Meta
+              </button>
+            )}
             <ThemeToggle />
           </div>
         </header>
@@ -703,16 +716,52 @@ export default function Dashboard() {
 
           {/* ── SEGUIMIENTO TBREIN ── */}
           {mainTab === "seguimiento" && (
-            <TbreinDashboard
-              ref={tbreinRef}
-              token={earlyToken ?? ""}
-              accounts={earlyAccounts}
-              accountId={tbreinAccountId}
-              range={tbreinRange}
-              compareEnabled={tbreinCompareEnabled}
-              view={tbreinView}
-              onViewChange={setTbreinView}
-            />
+            <>
+              {/* Loading — procesando token OAuth */}
+              {!earlyToken && fbStatus === "loading" && (
+                <div className="flex flex-col items-center gap-3 py-20">
+                  <Loader2 className="w-7 h-7 animate-spin text-blue-400" />
+                  <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>Conectando con Meta…</p>
+                </div>
+              )}
+
+              {/* Sin token — mostrar panel de conexión Meta */}
+              {!earlyToken && fbStatus !== "loading" && (
+                <div className="max-w-md mx-auto w-full pt-4 flex flex-col gap-5">
+                  <div className="text-center flex flex-col items-center gap-2">
+                    <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center">
+                      <Zap className="w-6 h-6 text-blue-400" />
+                    </div>
+                    <h2 className="text-lg font-bold">Conecta tu cuenta de Meta</h2>
+                    <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+                      Para ver el seguimiento de campañas, conecta tu cuenta de Meta Ads.
+                    </p>
+                  </div>
+                  <MetaApiConnect
+                    standalone
+                    fbStatus={fbStatus}
+                    token={fbToken}
+                    onLogin={fbLogin}
+                    onLoginWithToken={fbLoginWithToken}
+                    onLogout={handleMetaLogout}
+                  />
+                </div>
+              )}
+
+              {/* Con token — dashboard normal */}
+              {earlyToken && (
+                <TbreinDashboard
+                  ref={tbreinRef}
+                  token={earlyToken}
+                  accounts={earlyAccounts}
+                  accountId={tbreinAccountId}
+                  range={tbreinRange}
+                  compareEnabled={tbreinCompareEnabled}
+                  view={tbreinView}
+                  onViewChange={setTbreinView}
+                />
+              )}
+            </>
           )}
 
           {/* ── CONFIGURACIÓN ── */}
