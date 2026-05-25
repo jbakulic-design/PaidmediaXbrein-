@@ -161,7 +161,7 @@ export function TbreinHeaderFilters({
                     onClick={() => { onAccount(a.id); setShowAccount(false); setAcctSearch(""); }}
                     className={cn(
                       "flex items-center justify-between px-2 py-1.5 rounded-md text-xs transition text-left",
-                      a.id === accountId ? "bg-blue-500/15 text-blue-400" : "hover:bg-accent/60"
+                      a.id === accountId ? "bg-blue-500/15 text-blue-600 dark:text-blue-400" : "hover:bg-accent/60"
                     )}
                   >
                     <span className="truncate">{a.name}</span>
@@ -205,7 +205,7 @@ export function TbreinHeaderFilters({
                     className={cn(
                       "px-2 py-1 rounded-md text-[11px] font-medium transition border whitespace-nowrap",
                       preset === p && !activeSavedId
-                        ? "bg-blue-500/15 text-blue-400 border-blue-500/30"
+                        ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30"
                         : "hover:bg-accent/60"
                     )}
                     style={!(preset === p && !activeSavedId) ? { borderColor: "var(--border)", color: "var(--muted-foreground)" } : undefined}
@@ -279,7 +279,7 @@ export function TbreinHeaderFilters({
                         className={cn(
                           "group flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition border",
                           activeSavedId === sr.id
-                            ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                            ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
                             : "hover:bg-accent/60"
                         )}
                         style={activeSavedId !== sr.id ? { borderColor: "var(--border)", color: "var(--muted-foreground)" } : undefined}>
@@ -344,7 +344,7 @@ export function TbreinHeaderFilters({
         <button
           onClick={onReload}
           disabled={loading}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30 hover:bg-blue-500/25 disabled:opacity-50 transition"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 hover:bg-blue-500/25 disabled:opacity-50 transition"
           title="Recargar campañas"
         >
           {loading
@@ -356,7 +356,7 @@ export function TbreinHeaderFilters({
 
       {/* Loading indicator */}
       {loading && !showAnalysisControls && (
-        <span className="text-[10px] text-blue-400 animate-pulse">actualizando…</span>
+        <span className="text-[10px] text-blue-600 dark:text-blue-400 animate-pulse">actualizando…</span>
       )}
     </div>
   );

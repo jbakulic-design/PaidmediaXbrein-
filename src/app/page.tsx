@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import type { MetaCampaign, MetaTargets, CampaignAnalysis, MetaLabels } from "@/types/meta";
 import { DEFAULT_LABELS } from "@/types/meta";
 import type { SavedReport, ReportTotals } from "@/types/report";
@@ -47,6 +48,7 @@ import {
   Save, Loader2, Upload, RefreshCw,
   Table as TableIcon, LineChart as LineChartIcon, Repeat,
   Wallet, Network, FileText, Presentation,
+  Sparkles, ChevronRight,
 } from "lucide-react";
 import {
   formatCurrencyCompact, formatCompact,
@@ -389,11 +391,12 @@ export default function Dashboard() {
                   key={t.key}
                   onClick={t.onClick}
                   className={
-                    "flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors " +
+                    "relative flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium whitespace-nowrap transition-colors " +
                     (t.active
-                      ? "border-primary text-on-surface"
-                      : "border-transparent text-on-surface-variant hover:text-on-surface")
+                      ? "text-on-surface"
+                      : "text-on-surface-variant hover:text-on-surface")
                   }
+                  style={!t.active ? { color: "var(--foreground)", opacity: 0.65 } : undefined}
                 >
                   {t.icon}
                   {t.label}
@@ -402,6 +405,13 @@ export default function Dashboard() {
                       {reports.length}
                     </span>
                   )}
+                  {t.active && (
+                    <motion.span
+                      layoutId="active-tab-indicator"
+                      className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary rounded-full"
+                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                    />
+                  )}
                 </button>
               ))}
             </div>
@@ -409,6 +419,55 @@ export default function Dashboard() {
         )}
 
         <main className="flex-1 px-4 md:px-8 py-8 flex flex-col gap-6 max-w-[1440px] mx-auto w-full">
+
+          {/* Breadcrumb — only on TBREIN content tabs */}
+          {(() => {
+            const labelMap: Record<string, string> = {
+              "seguimiento:leads": "Seguimiento",
+              "seguimiento:export": "Crear presentación",
+              "analysis:table": "Tabla",
+              "analysis:charts": "Gráficos",
+              "analysis:compare": "Comparar",
+              "analysis:budget": "Presupuesto",
+              "analysis:structure": "Estructura",
+              "reports:": "Reportes",
+            };
+            const key = mainTab === "seguimiento"
+              ? `seguimiento:${tbreinView}`
+              : mainTab === "analysis"
+              ? `analysis:${analysisTab}`
+              : mainTab === "reports"
+              ? "reports:"
+              : "";
+            const currentLabel = labelMap[key];
+            if (!currentLabel) return null;
+            const viewKey = mainTab === "analysis" ? `analysis-${analysisTab}` : mainTab === "seguimiento" ? `seguimiento-${tbreinView}` : mainTab;
+            return (
+              <motion.div
+                key={`breadcrumb-${viewKey}`}
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="flex items-center gap-1.5 text-xs -mb-2"
+              >
+                <Sparkles className="w-3 h-3 text-amber-500 dark:text-amber-400" />
+                <span style={{ color: "var(--muted-foreground)" }}>TBREIN</span>
+                <ChevronRight className="w-3 h-3" style={{ color: "var(--muted-foreground)" }} />
+                <span className="font-semibold" style={{ color: "var(--foreground)" }}>{currentLabel}</span>
+              </motion.div>
+            );
+          })()}
+
+          {/* Animated content swap */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={mainTab === "analysis" ? `analysis-${analysisTab}` : mainTab === "seguimiento" ? `seguimiento-${tbreinView}` : mainTab}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              className="flex flex-col gap-6"
+            >
 
           {/* ── ANÁLISIS ── */}
           {mainTab === "analysis" && (
@@ -651,6 +710,8 @@ export default function Dashboard() {
 
           {/* ── SOPORTE ── */}
           {mainTab === "support" && <SupportPage />}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
     </div>
