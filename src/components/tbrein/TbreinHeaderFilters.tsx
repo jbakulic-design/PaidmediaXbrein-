@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Calendar, Bookmark, BookmarkCheck, Plus, Trash2, ChevronDown, Search } from "lucide-react";
+import { Calendar, Bookmark, BookmarkCheck, Plus, Trash2, ChevronDown, Search, Layers, RefreshCw, Loader2 } from "lucide-react";
 import type { MetaAdAccount } from "@/lib/metaApi";
 import type { DateRange, SeguimientoPreset } from "@/lib/seguimientoApi";
 import { SEGUIMIENTO_PRESET_LABELS, presetToRange } from "@/lib/seguimientoApi";
@@ -34,6 +34,13 @@ interface Props {
   compareEnabled:  boolean;
   onCompareToggle: (v: boolean) => void;
   loading?:        boolean;
+  // Analysis-mode extras (optional)
+  level?:          "campaign" | "adset" | "ad";
+  onLevel?:        (v: "campaign" | "adset" | "ad") => void;
+  onReload?:       () => void;
+  showAnalysisControls?: boolean;
+  // Section context (which feature we're on)
+  showCompare?:    boolean;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -43,6 +50,9 @@ export function TbreinHeaderFilters({
   range, preset, onRange,
   compareEnabled, onCompareToggle,
   loading,
+  level, onLevel, onReload,
+  showAnalysisControls = false,
+  showCompare = true,
 }: Props) {
   const [showAccount,  setShowAccount]  = useState(false);
   const [showPeriod,   setShowPeriod]   = useState(false);
@@ -289,29 +299,63 @@ export function TbreinHeaderFilters({
         </AnimatePresence>
       </div>
 
-      {/* ── Compare toggle ─────────────────────────────────────────────────── */}
-      <button
-        onClick={() => onCompareToggle(!compareEnabled)}
-        className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium hover:bg-accent/60 transition border"
-        style={{ borderColor: "var(--border)", background: "var(--card)" }}
-        title="Comparar con período anterior"
-      >
-        <span
-          className="w-7 h-3.5 rounded-full flex items-center px-0.5 transition-colors shrink-0"
-          style={{ background: compareEnabled ? "#3b82f6" : "var(--border)" }}
+      {/* ── Compare toggle (seguimiento) ───────────────────────────────────── */}
+      {showCompare && (
+        <button
+          onClick={() => onCompareToggle(!compareEnabled)}
+          className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium hover:bg-accent/60 transition border"
+          style={{ borderColor: "var(--border)", background: "var(--card)" }}
+          title="Comparar con período anterior"
         >
           <span
-            className="w-2.5 h-2.5 rounded-full bg-white transition-transform"
-            style={{ transform: compareEnabled ? "translateX(14px)" : "translateX(0)" }}
-          />
-        </span>
-        <span className="hidden lg:inline" style={{ color: compareEnabled ? undefined : "var(--muted-foreground)" }}>
-          Comparar
-        </span>
-      </button>
+            className="w-7 h-3.5 rounded-full flex items-center px-0.5 transition-colors shrink-0"
+            style={{ background: compareEnabled ? "#3b82f6" : "var(--border)" }}
+          >
+            <span
+              className="w-2.5 h-2.5 rounded-full bg-white transition-transform"
+              style={{ transform: compareEnabled ? "translateX(14px)" : "translateX(0)" }}
+            />
+          </span>
+          <span className="hidden lg:inline" style={{ color: compareEnabled ? undefined : "var(--muted-foreground)" }}>
+            Comparar
+          </span>
+        </button>
+      )}
+
+      {/* ── Level selector (analysis) ───────────────────────────────────────── */}
+      {showAnalysisControls && level && onLevel && (
+        <div className="flex items-center gap-1 px-2 py-1.5 rounded-lg border" style={{ borderColor: "var(--border)", background: "var(--card)" }}>
+          <Layers className="w-3 h-3" style={{ color: "var(--muted-foreground)" }} />
+          <select
+            value={level}
+            onChange={e => onLevel(e.target.value as "campaign" | "adset" | "ad")}
+            className="bg-transparent text-xs font-medium outline-none cursor-pointer"
+            style={{ color: "var(--foreground)" }}
+          >
+            <option value="campaign">Campaña</option>
+            <option value="adset">Ad Set</option>
+            <option value="ad">Anuncio</option>
+          </select>
+        </div>
+      )}
+
+      {/* ── Reload button (analysis) ───────────────────────────────────────── */}
+      {showAnalysisControls && onReload && (
+        <button
+          onClick={onReload}
+          disabled={loading}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30 hover:bg-blue-500/25 disabled:opacity-50 transition"
+          title="Recargar campañas"
+        >
+          {loading
+            ? <Loader2 className="w-3 h-3 animate-spin" />
+            : <RefreshCw className="w-3 h-3" />}
+          <span className="hidden lg:inline">Recargar</span>
+        </button>
+      )}
 
       {/* Loading indicator */}
-      {loading && (
+      {loading && !showAnalysisControls && (
         <span className="text-[10px] text-blue-400 animate-pulse">actualizando…</span>
       )}
     </div>

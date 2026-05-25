@@ -102,6 +102,13 @@ export default function Dashboard() {
 
   function handleTbreinRange(r: DateRange, p: SeguimientoPreset) {
     setTbreinRange(r); setTbreinPreset(p);
+    // Sincronizar período con análisis cuando es un preset compatible
+    const ANALYSIS_PRESETS: Record<string, DatePreset> = {
+      today: "today", yesterday: "yesterday",
+      last_7d: "last_7d", last_14d: "last_14d", last_30d: "last_30d",
+      this_month: "this_month", last_month: "last_month",
+    };
+    if (ANALYSIS_PRESETS[p]) setMetaDatePreset(ANALYSIS_PRESETS[p]);
   }
 
   // Sincroniza la cuenta TBREIN con la cuenta de análisis — una sola fuente
@@ -307,20 +314,7 @@ export default function Dashboard() {
         campaignType={campaignType}
         onCampaignType={setCampaignType}
         onLogout={logout}
-        metaQuick={earlyToken && mainTab === "analysis" ? {
-          accountName: earlyAccounts.find((a) => a.id === selectedAccountId)?.name ?? metaConnection?.accountName ?? "",
-          accountId: selectedAccountId,
-          accounts: earlyAccounts,
-          datePreset: metaDatePreset,
-          level: metaLevel,
-          onAccount: handleMetaAccount,
-          onDatePreset: setMetaDatePreset,
-          onLevel: setMetaLevel,
-          loading: metaLoading,
-          onLoad: handleLoadCampaigns,
-          hasData: campaigns.length > 0,
-          error: metaError || undefined,
-        } : undefined}
+        metaQuick={undefined /* controls moved to top header bar */}
       />
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -341,8 +335,8 @@ export default function Dashboard() {
                 />
               </div>
             )}
-            {/* TBREIN filters in header — only when on Seguimiento */}
-            {mainTab === "seguimiento" && earlyToken && (
+            {/* Unified header filters — visible on data tabs */}
+            {(mainTab === "seguimiento" || mainTab === "analysis" || mainTab === "reports") && earlyToken && (
               <div className="hidden md:flex min-w-0">
                 <TbreinHeaderFilters
                   accounts={earlyAccounts}
@@ -353,6 +347,12 @@ export default function Dashboard() {
                   onRange={handleTbreinRange}
                   compareEnabled={tbreinCompareEnabled}
                   onCompareToggle={setTbreinCompareEnabled}
+                  loading={mainTab === "analysis" ? metaLoading : undefined}
+                  showCompare={mainTab === "seguimiento"}
+                  showAnalysisControls={mainTab === "analysis"}
+                  level={metaLevel}
+                  onLevel={setMetaLevel}
+                  onReload={handleLoadCampaigns}
                 />
               </div>
             )}
