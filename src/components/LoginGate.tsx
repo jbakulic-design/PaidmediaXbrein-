@@ -1,29 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import { BarChart3, Eye, EyeOff, Lock } from "lucide-react";
+import { BarChart3, Eye, EyeOff, Mail, Lock } from "lucide-react";
 
 interface Props {
-  onLogin: (pw: string) => boolean;
+  onLogin: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
 }
 
 export function LoginGate({ onLogin }: Props) {
-  const [pw, setPw] = useState("");
-  const [show, setShow] = useState(false);
-  const [error, setError] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail]       = useState("");
+  const [pw, setPw]             = useState("");
+  const [show, setShow]         = useState(false);
+  const [error, setError]       = useState("");
+  const [loading, setLoading]   = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      const ok = onLogin(pw);
-      if (!ok) {
-        setError(true);
-        setPw("");
-      }
-      setLoading(false);
-    }, 400);
+    setError("");
+    const result = await onLogin(email.trim(), pw);
+    if (!result.ok) {
+      setError(result.error ?? "Credenciales incorrectas");
+      setPw("");
+    }
+    setLoading(false);
   };
 
   return (
@@ -40,7 +40,7 @@ export function LoginGate({ onLogin }: Props) {
           <div className="text-center">
             <h1 className="text-xl font-bold">Paid Media Analyzer</h1>
             <p className="text-sm mt-1" style={{ color: "var(--muted-foreground)" }}>
-              Ingresa tu contraseña para continuar
+              Ingresa tus credenciales para continuar
             </p>
           </div>
         </div>
@@ -51,6 +51,30 @@ export function LoginGate({ onLogin }: Props) {
           className="rounded-2xl border p-6 flex flex-col gap-4"
           style={{ borderColor: "var(--border)", background: "var(--card)" }}
         >
+          {/* Email */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium" style={{ color: "var(--muted-foreground)" }}>
+              Correo electrónico
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--muted-foreground)" }} />
+              <input
+                autoFocus
+                type="email"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setError(""); }}
+                placeholder="tu@email.com"
+                className="w-full rounded-xl border pl-9 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/40 transition"
+                style={{
+                  background: "var(--accent)",
+                  borderColor: error ? "#ef4444" : "var(--border)",
+                  color: "var(--foreground)",
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Password */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium" style={{ color: "var(--muted-foreground)" }}>
               Contraseña
@@ -58,10 +82,9 @@ export function LoginGate({ onLogin }: Props) {
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--muted-foreground)" }} />
               <input
-                autoFocus
                 type={show ? "text" : "password"}
                 value={pw}
-                onChange={(e) => { setPw(e.target.value); setError(false); }}
+                onChange={(e) => { setPw(e.target.value); setError(""); }}
                 placeholder="••••••••"
                 className="w-full rounded-xl border pl-9 pr-10 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/40 transition"
                 style={{
@@ -80,13 +103,13 @@ export function LoginGate({ onLogin }: Props) {
               </button>
             </div>
             {error && (
-              <p className="text-xs text-red-400">Contraseña incorrecta</p>
+              <p className="text-xs text-red-400">{error}</p>
             )}
           </div>
 
           <button
             type="submit"
-            disabled={!pw || loading}
+            disabled={!email || !pw || loading}
             className="w-full py-2.5 rounded-xl text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 disabled:opacity-50 transition"
           >
             {loading ? "Verificando…" : "Ingresar"}
@@ -94,7 +117,7 @@ export function LoginGate({ onLogin }: Props) {
         </form>
 
         <p className="text-center text-xs" style={{ color: "var(--muted-foreground)" }}>
-          Meta Ads · Análisis de campañas
+          Meta Ads · Análisis de campañas · XBREIN
         </p>
       </div>
     </div>

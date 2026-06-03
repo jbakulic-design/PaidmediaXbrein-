@@ -37,6 +37,7 @@ import { LoginGate } from "@/components/LoginGate";
 import { useReports } from "@/lib/useReports";
 import { useWorkspace } from "@/lib/useWorkspace";
 import { useAuth } from "@/lib/useAuth";
+import { useProfile } from "@/lib/useProfile";
 import { computeAlerts } from "@/lib/alerts";
 import type { GitHubConfig } from "@/lib/githubStorage";
 import { nanoid } from "@/lib/utils";
@@ -63,7 +64,8 @@ interface MetaConnection {
 }
 
 export default function Dashboard() {
-  const { authenticated, ready, login, logout } = useAuth();
+  const { authenticated, ready, user, login, logout } = useAuth();
+  const profile = useProfile(user?.id);
 
   // ── Auth Meta (elevado aquí para detectar token guardado desde el inicio) ──
   const { status: fbStatus, token: fbToken, login: fbLogin, loginWithToken: fbLoginWithToken, logout: fbLogout } = useFacebookSDK();
@@ -360,6 +362,19 @@ export default function Dashboard() {
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0">
+            {/* Usuario activo */}
+            {profile && (
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg mr-1"
+                style={{ background: "var(--accent)" }}>
+                <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-[11px] font-bold text-blue-400">
+                  {(profile.full_name ?? profile.email).charAt(0).toUpperCase()}
+                </div>
+                <span className="text-xs font-medium">{profile.full_name ?? profile.email}</span>
+                {profile.role === "super_admin" && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400">Admin</span>
+                )}
+              </div>
+            )}
             <AlertsBell alerts={alerts} />
             {(syncing || metaLoading) && (
               <span className="flex items-center gap-1 text-xs text-on-surface-variant px-2">
@@ -775,7 +790,7 @@ export default function Dashboard() {
           )}
 
           {/* ── EQUIPO ── */}
-          {mainTab === "team" && <TeamPage />}
+          {mainTab === "team" && <TeamPage isSuperAdmin={profile?.role === "super_admin"} />}
 
           {/* ── DOCUMENTACIÓN ── */}
           {mainTab === "docs" && <DocsPage />}

@@ -1,31 +1,40 @@
 "use client";
-import { useEffect, useState } from "react";
-
-const AUTH_KEY = "paidmedia_auth_v1";
-const APP_PASSWORD = process.env.NEXT_PUBLIC_APP_PASSWORD ?? "paidmedia2025";
+import { useEffect, useState, useCallback } from "react";
+import { createClient } from "@/lib/supabase/client";
+import type { User } from "@supabase/supabase-js";
 
 export function useAuth() {
+  const [user, setUser] = useState<User | null>(null);
   const [authenticated, setAuthenticated] = useState(false);
   const [ready, setReady] = useState(false);
+  const supabase = createClient();
 
   useEffect(() => {
-    setAuthenticated(localStorage.getItem(AUTH_KEY) === "1");
-    setReady(true);
-  }, []);
+    // Sesión inicial
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user);
+      setAuthenticated(!!data.user);
+      setReady(true);
+    });
 
-  const login = (pw: string) => {
-    if (pw === APP_PASSWORD) {
-      localStorage.setItem(AUTH_KEY, "1");
-      setAuthenticated(true);
-      return true;
-    }
-    return false;
-  };
+    // Escuchar cambios de sesión
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setAuthenticated(!!session?.user);
+    });
 
-  const logout = () => {
-    localStorage.removeItem(AUTH_KEY);
-    setAuthenticated(false);
-  };
+    return () => subscription.unsubscribe();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { authenticated, ready, login, logout };
+  const login = useCallback(async (email: string, password: string): Promise<{ ok: boolean; error?: string }> => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  }, [supabase]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const logout = useCallback(async () => {
+    await supabase.auth.signOut();
+  }, [supabase]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return { authenticated, ready, user, login, logout };
 }
