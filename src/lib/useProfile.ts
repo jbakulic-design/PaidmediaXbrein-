@@ -11,17 +11,24 @@ export interface Profile {
 
 export function useProfile(userId: string | undefined) {
   const [profile, setProfile] = useState<Profile | null>(null);
-  const supabase = createClient();
 
   useEffect(() => {
     if (!userId) { setProfile(null); return; }
+    const supabase = createClient();
     supabase
       .from("profiles")
       .select("*")
       .eq("id", userId)
       .single()
-      .then(({ data }) => setProfile(data));
-  }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("useProfile error:", error);
+          return;
+        }
+        console.log("useProfile data:", data);
+        setProfile(data);
+      });
+  }, [userId]);
 
   return profile;
 }
