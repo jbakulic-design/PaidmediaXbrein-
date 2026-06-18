@@ -33,11 +33,8 @@ import { SettingsPage } from "@/components/tbrein/pages/SettingsPage";
 import { TeamPage } from "@/components/tbrein/pages/TeamPage";
 import { DocsPage } from "@/components/tbrein/pages/DocsPage";
 import { SupportPage } from "@/components/tbrein/pages/SupportPage";
-import { LoginGate } from "@/components/LoginGate";
 import { useReports } from "@/lib/useReports";
 import { useWorkspace } from "@/lib/useWorkspace";
-import { useAuth } from "@/lib/useAuth";
-import { useProfile } from "@/lib/useProfile";
 import { computeAlerts } from "@/lib/alerts";
 import type { GitHubConfig } from "@/lib/githubStorage";
 import { nanoid } from "@/lib/utils";
@@ -64,9 +61,6 @@ interface MetaConnection {
 }
 
 export default function Dashboard() {
-  const { authenticated, ready, user, login, logout } = useAuth();
-  const profile = useProfile(user?.id);
-
   // ── Auth Meta (elevado aquí para detectar token guardado desde el inicio) ──
   const { status: fbStatus, token: fbToken, login: fbLogin, loginWithToken: fbLoginWithToken, logout: fbLogout } = useFacebookSDK();
 
@@ -300,9 +294,6 @@ export default function Dashboard() {
   }, [analyzed, targets, totals, decisionCounts, labels, save]);
 
   const typeConfig = CAMPAIGN_TYPE_CONFIG[campaignType];
-
-  if (!ready) return null;
-  if (!authenticated) return <LoginGate onLogin={login} />;
 
   return (
     <div className="min-h-screen flex bg-background">
