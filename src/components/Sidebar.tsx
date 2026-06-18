@@ -255,7 +255,7 @@ interface SidebarProps {
   campaignType:          CampaignType;
   onCampaignType:        (t: CampaignType) => void;
   metaQuick?:            MetaQuickSettings;
-  onLogout:              () => void;
+  onLogout?:             () => void;
 }
 
 // ── NavContent ────────────────────────────────────────────────────────────────

@@ -22,10 +22,10 @@ interface UserClient {
 }
 
 interface Props {
-  isSuperAdmin: boolean;
+  isSuperAdmin?: boolean;
 }
 
-export function TeamPage({ isSuperAdmin }: Props) {
+export function TeamPage({ isSuperAdmin = false }: Props) {
   const supabase = createClient();
   const [profiles, setProfiles]     = useState<Profile[]>([]);
   const [clients, setClients]       = useState<Client[]>([]);
