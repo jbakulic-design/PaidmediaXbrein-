@@ -1,40 +1,14 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
-import { createClient } from "@/lib/supabase/client";
-import type { User } from "@supabase/supabase-js";
+import { useState } from "react";
+
+const APP_PASSWORD = process.env.NEXT_PUBLIC_APP_PASSWORD ?? "paidmedia2025";
 
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
-  const [authenticated, setAuthenticated] = useState(false);
-  const [ready, setReady] = useState(false);
-  const supabase = createClient();
+  const [authenticated] = useState(true);
+  const ready = true;
 
-  useEffect(() => {
-    // Sesión inicial
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user);
-      setAuthenticated(!!data.user);
-      setReady(true);
-    });
+  const login = (pw: string) => pw === APP_PASSWORD;
+  const logout = () => {};
 
-    // Escuchar cambios de sesión
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setAuthenticated(!!session?.user);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const login = useCallback(async (email: string, password: string): Promise<{ ok: boolean; error?: string }> => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { ok: false, error: error.message };
-    return { ok: true };
-  }, [supabase]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const logout = useCallback(async () => {
-    await supabase.auth.signOut();
-  }, [supabase]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  return { authenticated, ready, user, login, logout };
+  return { authenticated, ready, login, logout };
 }
